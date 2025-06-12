@@ -1,34 +1,62 @@
-import sqlite3
+from model.banco.GerenciadorProfissionais import GerenciadorProfissionais
+from banco_chat import GerenciadorMensagens
 
-# Conectando ao banco de dados existente
-conn = sqlite3.connect('teste.db')
+#----------------testando banco fila
+'''
+from model.banco.gerenciador_fila import GerenciadorFila
 
-# Executando um comando SQL para criar uma tabela
-conn.execute('CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY, nome TEXT, idade INTEGER)')
+# Criar instância
+gerenciador_fila = GerenciadorFila()
 
-# Criar um cursor (permite executar comandos SQL)
-cursor = conn.cursor()
+# Adicionar à fila
+gerenciador_fila.adicionar_paciente_fila(
+    id_paciente=5,
+    tipo_fila=2,  # Atendimento
+    prioridade=1   # Alta
+)
 
-# Conectar ao banco de dados
-conn = sqlite3.connect('teste.db')
-cursor = conn.cursor()
+# Buscar fila de atendimento
+fila_atendimento = gerenciador_fila.buscar_fila(
+    tipo_fila=2,
+    status='Pendente'
+)
+'''
 
-# Inserir um registro na tabela 'usuarios'
-cursor.execute("INSERT INTO usuarios (nome, idade) VALUES (?, ?)", ("Zainab", 18))
+#------------------- testando banco mensagens
+'''
+# Criar instância
+gerenciador_msg = GerenciadorMensagens()
 
-# Confirmar (salvar) as alterações
-conn.commit()
+# Inserir mensagem
+id_msg = gerenciador_msg.inserir_mensagem({
+    'hora': '14:00',
+    'mensagem': 'Resultados de exames disponíveis',
+    'prioridade': 'alta'
+})
+
+# Buscar mensagens
+todas_msg = gerenciador_msg.buscar_mensagens()
+'''
+#-------------------------------------- testando banco de profissionais
+'''
+def testar_busca():  
+    gerenciador = GerenciadorProfissionais()
+    
+    gerenciador.inserir_dados_exemplo()
+    
+    resultados = gerenciador.buscar_profissionais()  # Sem filtros
+    
+    print("Profissionais encontrados:")
+    for prof in resultados:
+        print(prof)
+    cardiologistas = gerenciador.buscar_profissionais(
+        {'departamento': 'Cardiologia'}
+    )
+    print("\nCardiologistas:")
+    for card in cardiologistas:
+        print(card)
+'''
 
 
-# Executar SELECT para buscar todos os dados da tabela 'usuarios'
-cursor.execute('SELECT * FROM usuarios')
-
-# Buscar todos os resultados
-resultado = cursor.fetchall()
-
-# Exibir os resultados
-for linha in resultado:
-    print(linha)
-
-# Fechar a conexão
-conn.close()
+if __name__ == "__main__":
+    testar_busca()

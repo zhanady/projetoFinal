@@ -1,65 +1,83 @@
 import sqlite3
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox, filedialog
 
 
-def visualizar_tabela_sqlite(nome_banco, nome_tabela):
-    # Função interna para mostrar a tabela
-    def mostrar_tabela():
+def visualizador_sqlite():
+    def carregar_tabelas(event=None):
+        banco = entrada_banco.get()
         try:
-            conn = sqlite3.connect(nome_banco)
+            conn = sqlite3.connect(banco)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tabelas = [t[0] for t in cursor.fetchall()]
+            combo_tabelas["values"] = tabelas
+            if tabelas:
+                combo_tabelas.current(0)
+                mostrar_tabela()
+            else:
+                tree.delete(*tree.get_children())
+                messagebox.showinfo("Info", "Nenhuma tabela encontrada no banco selecionado.")
+            conn.close()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao acessar o banco:\n{e}")
+
+    def mostrar_tabela(event=None):
+        banco = entrada_banco.get()
+        tabela = combo_tabelas.get()
+
+        try:
+            conn = sqlite3.connect(banco)
             cursor = conn.cursor()
 
-            # Obter informações das colunas
-            cursor.execute(f"PRAGMA table_info({nome_tabela})")
+            # Buscar colunas
+            cursor.execute(f"PRAGMA table_info({tabela})")
             colunas_info = cursor.fetchall()
+            colunas = [col[1] for col in colunas_info]
 
-            if not colunas_info:
-                print(f"Tabela '{nome_tabela}' não encontrada no banco '{nome_banco}'.")
-                conn.close()
-                return
-
-            colunas = [coluna[1] for coluna in colunas_info]
-
-            # Configurar Treeview dinamicamente
             tree["columns"] = colunas
             tree["show"] = "headings"
 
-            for coluna in colunas:
-                tree.heading(coluna, text=coluna)
-                tree.column(coluna, width=100)
+            for col in colunas:
+                tree.heading(col, text=col)
+                tree.column(col, width=120)
 
-            # Buscar dados da tabela
-            cursor.execute(f"SELECT * FROM {nome_tabela}")
+            # Buscar dados
+            cursor.execute(f"SELECT * FROM {tabela}")
             dados = cursor.fetchall()
 
-            # Limpar dados antigos
-            for item in tree.get_children():
-                tree.delete(item)
-
-            # Inserir dados na Treeview
+            # Limpar e inserir
+            tree.delete(*tree.get_children())
             for linha in dados:
                 tree.insert("", tk.END, values=linha)
 
             conn.close()
 
-        except sqlite3.Error as e:
-            print("Erro ao acessar o banco:", e)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao carregar tabela:\n{e}")
 
-    # Criar janela
+    # Janela principal
     janela = tk.Tk()
-    janela.title(f"Tabela: {nome_tabela} | Banco: {nome_banco}")
-    janela.geometry("700x400")
+    janela.title("Visualizador de Tabelas SQLite")
+    janela.geometry("800x500")
 
-    # Criar Treeview
+    frame_topo = tk.Frame(janela)
+    frame_topo.pack(pady=10)
+
+    tk.Label(frame_topo, text="Banco de Dados:").grid(row=0, column=0)
+    entrada_banco = ttk.Entry(frame_topo, width=40)
+    entrada_banco.insert(0, "hospital.db")  # valor padrão
+    entrada_banco.grid(row=0, column=1, padx=5)
+
+    botao_buscar = ttk.Button(frame_topo, text="Carregar Tabelas", command=carregar_tabelas)
+    botao_buscar.grid(row=0, column=2)
+
+    tk.Label(frame_topo, text="Tabela:").grid(row=1, column=0, pady=10)
+    combo_tabelas = ttk.Combobox(frame_topo, state="readonly", width=37)
+    combo_tabelas.grid(row=1, column=1, padx=5)
+    combo_tabelas.bind("<<ComboboxSelected>>", mostrar_tabela)
+
     tree = ttk.Treeview(janela)
-    tree.pack(expand=True, fill="both")
-
-    # Botão para atualizar os dados
-    botao_atualizar = tk.Button(janela, text="Atualizar Tabela", command=mostrar_tabela)
-    botao_atualizar.pack(pady=10)
-
-    # Mostrar dados inicialmente
-    mostrar_tabela()
+    tree.pack(fill="both", expand=True, padx=10, pady=10)
 
     janela.mainloop()
