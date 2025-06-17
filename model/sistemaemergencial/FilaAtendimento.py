@@ -47,7 +47,7 @@ class FilaAtendimento:
             pulseiras_azuis = 0, 0, 0, 0, 0
 
         def logica_ordenacao_triagem(paciente):
-            from project.model.sistemaemergencial.Triagem import Triagem
+            from Triagem import Triagem
             gravidade = paciente.get_triagem().get_cor_pulseira()
             if gravidade == Triagem.VERMELHA:
                 nonlocal pulseiras_vermelhas

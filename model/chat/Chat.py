@@ -5,13 +5,11 @@ class Chat:
     # o atributo mensagens vai ser um dict, cujas chaves são o horário de envio de uma
     # mensagem e os valores são as mensagens propriamente ditas
     def __init__(self, usuarios):
-        if len(usuarios) == 0:
-            pass
         self.usuarios = usuarios
         self.mensagens = {}
 
     def get_usuarios(self):
-        return dict(self.usuarios)
+        return self.usuarios[:]
 
     def get_mensagens(self):
         return dict(self.mensagens)
