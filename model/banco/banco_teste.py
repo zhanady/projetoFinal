@@ -1,5 +1,5 @@
-from model.banco.GerenciadorProfissionais import GerenciadorProfissionais
-from banco_chat import GerenciadorMensagens
+#from model.banco.GerenciadorProfissionais import GerenciadorProfissionais
+#from banco_chat import GerenciadorMensagens
 
 #----------------testando banco fila
 '''
@@ -58,5 +58,5 @@ def testar_busca():
 '''
 
 
-if __name__ == "__main__":
-    testar_busca()
+#if __name__ == "__main__":
+#    testar_busca()
