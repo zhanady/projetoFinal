@@ -45,7 +45,7 @@ Um sistema completo para gerenciamento de emergências hospitalares, com triagem
 3. Execute o sistema:
 
    ```bash
-   python main.py
+   python telasMain.py
    ```
 
 ---
