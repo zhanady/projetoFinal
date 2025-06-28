@@ -1,9 +1,9 @@
 import customtkinter as ctk
-from telaRelatorios import MenuRelatorios
-from telaEstoque import TelaEstoque
-from telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from gui.telaEstoque import TelaEstoque
+from gui.telaChat import ChatScreen
 
-from telaPedido import TelaPedidos  # ← nova importação
+from gui.telaPedido import TelaPedidos  # ← nova importação
 
 
 class TelaFarmaceutico(ctk.CTkFrame):

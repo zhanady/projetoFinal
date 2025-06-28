@@ -1,102 +1,131 @@
 import customtkinter as ctk
-from telaChat import ChatScreen
-from telaRelatorios import MenuRelatorios
+from gui.telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from banco.GerenciadorPacientes import GerenciadorPacientes
 
-# Configuração inicial
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")
+class AppAtendente(ctk.CTkFrame):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, fg_color="white", **kwargs)
 
-app = ctk.CTk(fg_color="white")
-app.geometry("1000x600")
-app.title("Atendente")
+        ctk.set_appearance_mode("light")
+        ctk.set_default_color_theme("blue")
 
-main_frame = None
-chat_screen = None
+        self.gerenciador = GerenciadorPacientes()
+        self.menu_visivel = False
+        self.chat_screen = None
+        self.main_frame = None
+        self.sidebar = None
 
-# Estado do menu de relatórios
-menu_visivel = False
-relatorio_menu = MenuRelatorios(app)
-relatorio_menu.place_forget()  
+        self.criar_sidebar()
+        self.criar_tela_cadastro()
+        self.criar_menu_relatorio()
 
-def toggle_relatorio_menu():
-    global menu_visivel
-    if menu_visivel:
-        relatorio_menu.place_forget()
-    else:
-        relatorio_menu.place(x=210, y=100)  # ajuste a posição conforme necessário
-    menu_visivel = not menu_visivel
+    def criar_sidebar(self):
+        self.sidebar = ctk.CTkFrame(self, width=200)
+        self.sidebar.pack(side="left", fill="y")
 
-# Painel lateral
-sidebar = ctk.CTkFrame(app, width=200)
-sidebar.pack(side="left", fill="y")
+        ctk.CTkLabel(self.sidebar, text="", font=("Arial", 16)).pack(pady=(20, 10))
 
-ctk.CTkLabel(sidebar, text="", font=("Arial", 16)).pack(pady=(20, 10))
+        ctk.CTkButton(self.sidebar, text="Cadastrar Paciente", anchor="w",
+                      fg_color="black", command=self.mostrar_tela_cadastro).pack(pady=10, padx=10, fill="x")
 
-def mostrar_tela_cadastro():
-    global main_frame, chat_screen
+        ctk.CTkButton(self.sidebar, text="Relatórios", anchor="w",
+                      fg_color="black", command=self.toggle_relatorio_menu).pack(pady=10, padx=10, fill="x")
 
-    if chat_screen:
-        chat_screen.pack_forget()
-        # Alternativamente: chat_screen.destroy(); chat_screen = None
+        ctk.CTkButton(self.sidebar, text="Chat", anchor="w",
+                      fg_color="black", command=self.mostrar_tela_chat).pack(pady=10, padx=10, fill="x")
 
-    main_frame.pack(fill="both", expand=True)
+        ctk.CTkButton(self.sidebar, text="Log out", anchor="w",
+                      fg_color="black").pack(side="bottom", pady=20, padx=10, fill="x")
+
+    def criar_tela_cadastro(self):
+        self.main_frame = ctk.CTkFrame(self, fg_color="#F0F0F0")
+        self.main_frame.pack(side="left", fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(self.main_frame, text="Cadastro de Paciente", font=("Arial", 18, "bold")).grid(row=0, column=0, columnspan=2, pady=(10, 0), sticky="w")
+        ctk.CTkLabel(self.main_frame, text="Preencha os dados do paciente e o encaminhe para triagem").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 20))
+
+        self.entries = []
+        labels = ["Name", "CPF", "Telefone", "E-mail", "Data de Nascimento", "Sexo"]
+        for i, label in enumerate(labels):
+            ctk.CTkLabel(self.main_frame, text=label).grid(row=i + 2, column=0, padx=10, pady=5, sticky="w")
+            entry = ctk.CTkEntry(self.main_frame, width=250)
+            entry.grid(row=i + 2, column=1, padx=10, pady=5, sticky="w")
+            self.entries.append(entry)
+
+        self.entries_right = []
+        labels_right = ["Tipo sanguíneo", "Endereco"]
+        for i, label in enumerate(labels_right):
+            ctk.CTkLabel(self.main_frame, text=label).grid(row=i + 2, column=2, padx=10, pady=5, sticky="w")
+            entry = ctk.CTkEntry(self.main_frame, width=250)
+            entry.grid(row=i + 2, column=3, padx=10, pady=5, sticky="w")
+            self.entries_right.append(entry)
+
+        ctk.CTkButton(self.main_frame, text="Salvar e encaminhar para triagem",
+                      fg_color="black", command=self.salvar_paciente).grid(row=10, column=3, pady=40, sticky="e")
+
+    def salvar_paciente(self):
+        try:
+            print(self.entries)
+            nome = self.entries[0].get()
+            cpf = self.entries[1].get()
+            telefone = self.entries[2].get()
+            email = self.entries[3].get()
+            data_nasc = self.entries[4].get()
+            sexo = self.entries[5].get()
+            tipo_sang = self.entries_right[0].get()
+            endereco = self.entries_right[1].get()
+            #status = self.entries_right[2].get()
+
+            print("Nome:", nome)
+            print("CPF:", cpf)
+            print("Telefone:", telefone)
+            print("Email:", email)
+            print("Data Nascimento:", data_nasc)
+            print("Sexo:", sexo)
+            print("Tipo Sanguíneo:", tipo_sang)
+            print("Endereço:", endereco)
+            #print("Status:", status)
 
 
+            if not nome or not cpf:
+                print("⚠ Nome e CPF são obrigatórios.")
+                return
 
-btn_cadastrar = ctk.CTkButton(sidebar, text="Cadastrar Paciente", anchor="w", fg_color="black", command=mostrar_tela_cadastro)
-btn_cadastrar.pack(pady=10, padx=10, fill="x")
+            id_paciente = self.gerenciador.inserir_paciente(
+                nome, cpf, telefone, email, data_nasc, sexo,
+                tipo_sang, endereco
+            )
+            print(f"✔ Paciente cadastrado com ID {id_paciente}")
+        except Exception as e:
+            print(f"Erro ao salvar paciente: {e}")
 
-btn_relatorios = ctk.CTkButton(sidebar, text="Relatórios", fg_color="black", anchor="w", command=toggle_relatorio_menu)
-btn_relatorios.pack(pady=10, padx=10, fill="x")
+    def criar_menu_relatorio(self):
+        self.relatorio_menu = MenuRelatorios(self)
+        self.relatorio_menu.place_forget()
+
+    def toggle_relatorio_menu(self):
+        if self.menu_visivel:
+            self.relatorio_menu.place_forget()
+        else:
+            self.relatorio_menu.place(x=210, y=100)
+        self.menu_visivel = not self.menu_visivel
+
+    def mostrar_tela_cadastro(self):
+        if self.chat_screen:
+            self.chat_screen.pack_forget()
+        self.main_frame.pack(fill="both", expand=True)
+
+    def mostrar_tela_chat(self):
+        self.main_frame.pack_forget()
+        if not self.chat_screen:
+            self.chat_screen = ChatScreen(self)
+        self.chat_screen.pack(fill="both", expand=True)
 
 
-def mostrar_tela_chat():
-    global main_frame, chat_screen
-
-    main_frame.pack_forget()
-
-    if not chat_screen:
-        chat_screen = ChatScreen(app)
-
-    chat_screen.pack(fill="both", expand=True)
-
-btn_chat = ctk.CTkButton(sidebar, text="Chat", anchor="w", fg_color="black", command=mostrar_tela_chat)
-btn_chat.pack(pady=10, padx=10, fill="x")
-
-btn_logout = ctk.CTkButton(sidebar, text="Log out", anchor="w", fg_color="black")
-btn_logout.pack(side="bottom", pady=20, padx=10, fill="x")
-
-# Área de formulário principal
-main_frame = ctk.CTkFrame(app, fg_color="#F0F0F0")  # cinza claro
-main_frame.pack(side="left", fill="both", expand=True, padx=20, pady=20)
-
-ctk.CTkLabel(main_frame, text="Cadastro de Paciente", font=("Arial", 18, "bold")).grid(row=0, column=0, columnspan=2, pady=(10, 0), sticky="w")
-ctk.CTkLabel(main_frame, text="Preencha os dados do paciente e o encaminhe para triagem").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 20))
-
-# Campos do formulário
-labels = ["Name", "CPF", "Telefone", "E-mail", "Data de Nascimento", "Sexo"]
-entries = []
-
-for i, label in enumerate(labels):
-    ctk.CTkLabel(main_frame, text=label).grid(row=i + 2, column=0, padx=10, pady=5, sticky="w")
-    entry = ctk.CTkEntry(main_frame, width=250)
-    entry.grid(row=i + 2, column=1, padx=10, pady=5, sticky="w")
-    entries.append(entry)
-
-labels_right = ["Tipo sanguíneo", "Endereco", "Status"]
-entries_right = []
-
-for i, label in enumerate(labels_right):
-    ctk.CTkLabel(main_frame, text=label).grid(row=i + 2, column=2, padx=10, pady=5, sticky="w")
-    entry = ctk.CTkEntry(main_frame, width=250)
-    entry.grid(row=i + 2, column=3, padx=10, pady=5, sticky="w")
-    entries_right.append(entry)
-
-# Botão de salvar
-save_button = ctk.CTkButton(main_frame, text="Salvar e encaminhar para triagem", fg_color="black")
-save_button.grid(row=10, column=3, pady=40, sticky="e")
-
-relatorio_menu = MenuRelatorios(app)
-relatorio_menu.place_forget()
-
-app.mainloop()
+if __name__ == "__main__":
+    root = ctk.CTk()
+    root.geometry("1000x600")
+    app = AppAtendente(root)
+    app.pack(fill="both", expand=True)
+    root.mainloop()

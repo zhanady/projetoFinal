@@ -1,11 +1,13 @@
 import sqlite3
 from typing import Optional, Dict, Any, List
-
+from banco.GerenciadorFila import *
 
 class GerenciadorPacientes:
     def __init__(self, db_name: str = 'hospital.db'):
         self.db_name = db_name
         self._criar_tabelas()
+        self.gerenciadorFila = GerenciadorFila()
+
 
     def _conectar(self):
         return sqlite3.connect(self.db_name)
@@ -13,63 +15,45 @@ class GerenciadorPacientes:
     def _criar_tabelas(self):
         with self._conectar() as conn:
             cursor = conn.cursor()
-            # Tabela usuarios
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS usuarios (
+                CREATE TABLE IF NOT EXISTS pacientes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nome TEXT NOT NULL,
                     cpf TEXT UNIQUE NOT NULL,
                     telefone TEXT,
-                    email TEXT
-                )
-            ''')
-
-            # Tabela pacientes
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pacientes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usuario_id INTEGER NOT NULL,
+                    email TEXT,
                     data_nascimento TEXT,
                     sexo TEXT,
                     tipo_sanguineo TEXT,
                     endereco TEXT,
-                    status TEXT NOT NULL,
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                    status TEXT NOT NULL DEFAULT 'ativo'
                 )
             ''')
             conn.commit()
 
-    def inserir_usuario(self, nome: str, cpf: str, telefone: Optional[str], email: Optional[str]) -> int:
+    def inserir_paciente(self, nome: str, cpf: str, telefone: Optional[str], email: Optional[str],
+                            data_nascimento: str, sexo: str, tipo_sanguineo: str,
+                            endereco: str, status: str = 'ativo') -> int:
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT OR IGNORE INTO usuarios (nome, cpf, telefone, email)
-                VALUES (?, ?, ?, ?)
-            ''', (nome, cpf, telefone, email))
+                INSERT OR IGNORE INTO pacientes
+                (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status))
             conn.commit()
-            cursor.execute("SELECT id FROM usuarios WHERE cpf = ?", (cpf,))
-            return cursor.fetchone()[0]
+            id_paciente = cursor.lastrowid
 
-    def inserir_paciente(self, usuario_id: int, data_nascimento: str, sexo: str,
-                         tipo_sanguineo: str, endereco: str, status: str) -> int:
-        with self._conectar() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR IGNORE INTO pacientes (usuario_id, data_nascimento, sexo, tipo_sanguineo, endereco, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (usuario_id, data_nascimento, sexo, tipo_sanguineo, endereco, status))
-            conn.commit()
-            print(f"Paciente vinculado ao usuário ID {usuario_id} inserido.")
-            return cursor.lastrowid
+        # Adiciona paciente na fila de triagem (tipo_fila=0)
+        if self.gerenciadorFila and id_paciente:
+            self.gerenciadorFila.adicionar_paciente_fila(id_paciente=id_paciente, tipo_fila=0, prioridade=3)
+
+        return id_paciente
 
     def consultar(self, filtros: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         with self._conectar() as conn:
             cursor = conn.cursor()
-            query = '''
-                SELECT p.*, u.nome, u.cpf, u.telefone, u.email
-                FROM pacientes p
-                JOIN usuarios u ON p.usuario_id = u.id
-            '''
+            query = 'SELECT * FROM pacientes'
             params = []
 
             if filtros:
@@ -98,11 +82,19 @@ class GerenciadorPacientes:
                 WHERE id = ?
             ''', valores)
             conn.commit()
-            print(f"Paciente ID {id_paciente} atualizado.")
 
     def remover(self, id_paciente: int):
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM pacientes WHERE id = ?", (id_paciente,))
             conn.commit()
-            print(f"Paciente ID {id_paciente} removido.")
+
+    def encerrar_atendimento(self, id_paciente: int):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE pacientes
+                SET status = 'desativo'
+                WHERE id = ?
+            ''', (id_paciente,))
+            conn.commit()

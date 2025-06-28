@@ -20,20 +20,21 @@ class GerenciadorUsuarios:
                     email TEXT UNIQUE NOT NULL,
                     senha TEXT NOT NULL,
                     idade INTEGER,
-                    genero TEXT
+                    genero TEXT,
+                    tipo INTEGER
                 )
             ''')
             conn.commit()
 
-    def inserir(self, nome: str, email: str, senha: str,
+    def inserir(self, nome: str, email: str, senha: str, tipo: int,
                 idade: Optional[int] = None, genero: Optional[str] = None) -> int:
         with self._conectar() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    INSERT INTO usuarios (nome, email, senha, idade, genero)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (nome, email, senha, idade, genero))
+                    INSERT INTO usuarios (nome, email, senha, idade, genero, tipo)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (nome, email, senha, idade, genero, tipo))
                 conn.commit()
                 print(f"Usuário '{nome}' inserido com sucesso.")
                 return cursor.lastrowid
@@ -81,3 +82,35 @@ class GerenciadorUsuarios:
             cursor.execute("DELETE FROM usuarios WHERE id = ?", (id_usuario,))
             conn.commit()
             print(f"Usuário ID {id_usuario} removido com sucesso.")
+    
+    def obter_tipo_usuario(self, identificador: Any, por_email: bool = False) -> Optional[int]:
+        """
+        Retorna o tipo do usuário dado o ID ou o email.
+        :param identificador: ID do usuário (int) ou email (str)
+        :param por_email: Se True, usa o email como filtro. Caso contrário, usa o ID.
+        :return: Tipo do usuário (int) ou None se não encontrado
+        """
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            if por_email:
+                cursor.execute("SELECT tipo FROM usuarios WHERE email = ?", (identificador,))
+            else:
+                cursor.execute("SELECT tipo FROM usuarios WHERE id = ?", (identificador,))
+
+            resultado = cursor.fetchone()
+            return resultado[0] if resultado else None
+    def autenticar(self, email: str, senha: str) -> Optional[Dict[str, Any]]:
+        """
+        Verifica se o usuário com o email e senha fornecidos existe.
+        Retorna os dados do usuário se válido, ou None se inválido.
+        """
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM usuarios WHERE email = ? AND senha = ?", (email, senha))
+            resultado = cursor.fetchone()
+
+            if resultado:
+                colunas = [desc[0] for desc in cursor.description]
+                return dict(zip(colunas, resultado))
+            else:
+                return None

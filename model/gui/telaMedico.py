@@ -1,9 +1,9 @@
 import customtkinter as ctk
-from telaFila import TelaFila
-from telaChat import ChatScreen
-from telaRelatorios import MenuRelatorios
-from telaSolicitarRemedios import TelaSolicitarMedicamento
-from telaLeitos import TelaLeitos
+from gui.telaFila import TelaFila
+from gui.telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from gui.telaSolicitarRemedios import TelaSolicitarMedicamento
+from gui.telaLeitos import TelaLeitos
 
 
 class TelaMedico(ctk.CTkFrame):
@@ -13,7 +13,7 @@ class TelaMedico(ctk.CTkFrame):
         self.relatorio_menu = MenuRelatorios(self)
         self.relatorio_menu.place_forget()
         self.menu_relatorio_visivel = False
-
+        self.paciente = paciente
         self.chat_screen = None
 
         
@@ -54,9 +54,19 @@ class TelaMedico(ctk.CTkFrame):
         dados_frame.pack(side="left", fill="both", expand=True, padx=(10, 5), pady=10)
 
         ctk.CTkLabel(dados_frame, text="Dados", font=("Arial", 14, "bold")).pack(anchor="w")
-        for campo in ["Nome", "Data de nascimento", "Sexo", "Status"]:
-            ctk.CTkLabel(dados_frame, text=campo, anchor="w", justify="left").pack(fill="x", padx=5, pady=(5, 0))
-            ctk.CTkEntry(dados_frame, width=200).pack(anchor="w", padx=5)
+        campos = [
+            ("Nome", "nome"),
+            ("Data de nascimento", "data_nascimento"),
+            ("Sexo", "sexo"),
+            ("Status", "status")
+        ]
+
+        for label, chave in campos:
+            ctk.CTkLabel(dados_frame, text=label, anchor="w", justify="left").pack(fill="x", padx=5, pady=(5, 0))
+            entry = ctk.CTkEntry(dados_frame, width=200)
+            entry.insert(0, self.paciente.get(chave, ""))
+            entry.pack(anchor="w", padx=5)
+
 
         # Sintomas
         sintomas_frame = ctk.CTkFrame(top_frame, fg_color="white")
@@ -139,7 +149,7 @@ class TelaPrincipal(ctk.CTkFrame):
         ctk.CTkLabel(self.sidebar, text="My Account", font=("Arial", 16)).pack(pady=(20, 10))
 
         ctk.CTkButton(self.sidebar, text="Fila", fg_color="black", anchor="w", command=self.mostrar_fila).pack(padx=10, pady=5, fill="x")
-        ctk.CTkButton(self.sidebar, text="Atendimento", fg_color="black", anchor="w", command=self.mostrar_atendimento).pack(padx=10, pady=5, fill="x")
+        #ctk.CTkButton(self.sidebar, text="Atendimento", fg_color="black", anchor="w", command=self.mostrar_atendimento).pack(padx=10, pady=5, fill="x")
         ctk.CTkButton(self.sidebar, text="Chat", fg_color="black", anchor="w", command=self.mostrar_chat).pack(padx=10, pady=5, fill="x")
         self.btn_leitos = ctk.CTkButton(self.sidebar, anchor="w", text="Leitos", fg_color="black", command=self.mostrar_leitos )
         self.btn_leitos.pack(padx=10, pady=5, fill="x")
@@ -178,9 +188,9 @@ class TelaPrincipal(ctk.CTkFrame):
 
 
 
-    def mostrar_atendimento(self):
+    def mostrar_atendimento(self, paciente):
         self.limpar_area_principal()
-        tela = TelaMedico(self.area_principal)
+        tela = TelaMedico(self.area_principal, paciente=paciente)
         tela.pack(fill="both", expand=True)
 
     def mostrar_chat(self):

@@ -1,28 +1,26 @@
+# tela_login.py
 import customtkinter as ctk
+from banco.GerenciadorUsuarios import *
+
 
 class TelaLogin(ctk.CTkFrame):
     def __init__(self, master, callback_login, **kwargs):
         super().__init__(master, fg_color="white", **kwargs)
+        self.callback_login = callback_login
 
-        self.callback_login = callback_login  # função que será chamada ao logar
-
-        # Área central de login
         container = ctk.CTkFrame(self, fg_color="#F9F9F9", corner_radius=12)
         container.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(container, text="Login", font=("Arial", 24, "bold")).pack(pady=(20, 10))
 
-        # Campo de usuário
-        ctk.CTkLabel(container, text="Usuário", anchor="w").pack(padx=20, anchor="w")
+        ctk.CTkLabel(container, text="E-mail", anchor="w").pack(padx=20, anchor="w")
         self.usuario_entry = ctk.CTkEntry(container, width=250)
         self.usuario_entry.pack(padx=20, pady=10)
 
-        # Campo de senha
         ctk.CTkLabel(container, text="Senha", anchor="w").pack(padx=20, anchor="w")
         self.senha_entry = ctk.CTkEntry(container, show="*", width=250)
         self.senha_entry.pack(padx=20, pady=10)
 
-        # Botão de login
         ctk.CTkButton(
             container,
             text="Entrar",
@@ -32,27 +30,20 @@ class TelaLogin(ctk.CTkFrame):
             command=self.realizar_login
         ).pack(pady=(10, 20), padx=20)
 
+        self.gerenciador = GerenciadorUsuarios()
+
     def realizar_login(self):
-        usuario = self.usuario_entry.get().strip()
+        email = self.usuario_entry.get().strip()
         senha = self.senha_entry.get().strip()
 
-        # Validação básica (pode ser substituída por autenticação real)
-        if usuario and senha:
-            self.callback_login(usuario)
-        else:
+        if not email or not senha:
             print("Usuário ou senha vazios")
+            return
 
-def app_inicial(usuario):
-    print(f"Acessando sistema como: {usuario}")
+        usuario = self.gerenciador.autenticar(email, senha)
 
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")
-
-app = ctk.CTk()
-app.geometry("500x400")
-app.title("Tela de Login")
-
-tela_login = TelaLogin(app, callback_login=app_inicial)
-tela_login.pack(fill="both", expand=True)
-
-app.mainloop()
+        if usuario:
+            print(f"Login bem-sucedido. Tipo: {usuario['tipo']}")
+            self.callback_login(usuario)  # envia o dicionário com os dados do usuário
+        else:
+            print("Email ou senha incorretos.")

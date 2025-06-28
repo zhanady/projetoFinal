@@ -30,6 +30,17 @@ class GerenciadorFila:
                     FOREIGN KEY (id_profissional_encaminhou) REFERENCES profissionais(id)
                 )
             ''')
+
+            # Tabela de profissionais (necessária para os joins)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS profissionais (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    especialidade TEXT,
+                    registro TEXT
+                )
+            ''')
+
             
             # Tabela de histórico de movimentação na fila
             cursor.execute('''
