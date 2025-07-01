@@ -1,9 +1,9 @@
 import customtkinter as ctk
-from telaRelatorios import MenuRelatorios
-from telaEstoque import TelaEstoque
-from telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from gui.telaEstoque import TelaEstoque
+from gui.telaChat import ChatScreen
 
-from telaPedido import TelaPedidos  # ← nova importação
+from gui.telaPedido import TelaPedidos  # ← nova importação
 
 
 class TelaFarmaceutico(ctk.CTkFrame):
@@ -14,7 +14,7 @@ class TelaFarmaceutico(ctk.CTkFrame):
         self.menu_relatorio_visivel = False
 
         self.relatorio_menu = MenuRelatorios(self)
-        self.relatorio_menu.place_forget()
+
 
         # Sidebar
         self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#F8F9FA", border_width=1)

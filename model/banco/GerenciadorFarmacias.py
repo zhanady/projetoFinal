@@ -16,22 +16,23 @@ class GerenciadorFarmacia:
         with self._conectar() as conn:
             cursor = conn.cursor()
             
+            # Criação da tabela "farmacia" com campos principais para controle de medicamentos
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS farmacia (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    medicamento TEXT NOT NULL,
-                    principio_ativo TEXT NOT NULL,
-                    concentracao TEXT NOT NULL,
-                    quantidade INTEGER NOT NULL DEFAULT 0,
-                    unidade_medida TEXT NOT NULL,
-                    lote TEXT,
-                    data_validade TEXT,
-                    categoria TEXT,
-                    minimo_estoque INTEGER DEFAULT 10,
-                    maximo_estoque INTEGER DEFAULT 100,
-                    fornecedor TEXT,
-                    codigo_barras TEXT UNIQUE,
-                    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,                    -- Identificador único
+                    medicamento TEXT NOT NULL,                               -- Nome do medicamento
+                    principio_ativo TEXT NOT NULL,                           -- Princípio ativo
+                    concentracao TEXT NOT NULL,                              -- Dosagem/concentração
+                    quantidade INTEGER NOT NULL DEFAULT 0,                   -- Quantidade em estoque
+                    unidade_medida TEXT NOT NULL,                            -- Unidade (comprimidos, frascos, etc)
+                    lote TEXT,                                               -- Lote (opcional)
+                    data_validade TEXT,                                      -- Data de validade (opcional)
+                    categoria TEXT,                                          -- Categoria do medicamento (opcional)
+                    minimo_estoque INTEGER DEFAULT 10,                       -- Estoque mínimo permitido
+                    maximo_estoque INTEGER DEFAULT 100,                      -- Estoque máximo recomendado
+                    fornecedor TEXT,                                         -- Fornecedor do medicamento
+                    codigo_barras TEXT UNIQUE,                               -- Código de barras (único, se houver)
+                    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP        -- Data de cadastro automática
                 )
             ''')
             
@@ -50,9 +51,10 @@ class GerenciadorFarmacia:
         with self._conectar() as conn:
             cursor = conn.cursor()
             
-            # Verificar se a tabela está vazia
+            # Verificar se já existem registros na tabela
             cursor.execute('SELECT COUNT(*) FROM farmacia')
             if cursor.fetchone()[0] == 0:
+                # Inserir dados básicos se a tabela estiver vazia
                 cursor.executemany('''
                     INSERT INTO farmacia 
                     (medicamento, principio_ativo, concentracao, quantidade, unidade_medida)
@@ -80,15 +82,16 @@ class GerenciadorFarmacia:
         with self._conectar() as conn:
             cursor = conn.cursor()
             
-            campos = []
-            valores = []
-            placeholders = []
+            campos = []        # Lista de campos a serem inseridos
+            valores = []       # Lista de valores correspondentes
+            placeholders = []  # Lista de "?" para uso seguro no SQL
             
             for campo, valor in medicamento_data.items():
                 campos.append(campo)
                 valores.append(valor)
                 placeholders.append('?')
             
+            # Montagem da query de inserção dinâmica com base nos dados fornecidos
             query = f'''
                 INSERT INTO farmacia ({', '.join(campos)})
                 VALUES ({', '.join(placeholders)})
@@ -96,7 +99,7 @@ class GerenciadorFarmacia:
             
             cursor.execute(query, valores)
             conn.commit()
-            return cursor.lastrowid
+            return cursor.lastrowid  # Retorna o ID do novo registro inserido
     
     def atualizar_estoque(self, medicamento_id, nova_quantidade):
         """
@@ -113,6 +116,7 @@ class GerenciadorFarmacia:
             cursor = conn.cursor()
             
             try:
+                # Atualiza a coluna "quantidade" para o medicamento especificado
                 cursor.execute('''
                     UPDATE farmacia
                     SET quantidade = ?
@@ -120,9 +124,9 @@ class GerenciadorFarmacia:
                 ''', (nova_quantidade, medicamento_id))
                 
                 conn.commit()
-                return cursor.rowcount > 0
+                return cursor.rowcount > 0  # Retorna True se algum registro foi alterado
             except Exception as e:
-                conn.rollback()
+                conn.rollback()  # Desfaz qualquer alteração no caso de erro
                 print(f"Erro ao atualizar estoque: {e}")
                 return False
     
@@ -138,37 +142,42 @@ class GerenciadorFarmacia:
             list: Lista de dicionários com os medicamentos encontrados
         """
         with self._conectar() as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlite3.Row  # Permite retornar resultados como dicionários
             cursor = conn.cursor()
             
             query = 'SELECT * FROM farmacia'
-            conditions = []
-            params = []
+            conditions = []  # Lista de condições WHERE
+            params = []      # Lista de parâmetros para passar na query
             
             if filtros:
                 for campo, valor in filtros.items():
                     if campo.endswith('_min'):
+                        # Campo mínimo (ex: quantidade_min)
                         campo_real = campo.replace('_min', '')
                         conditions.append(f"{campo_real} >= ?")
                         params.append(valor)
                     elif campo.endswith('_max'):
+                        # Campo máximo (ex: quantidade_max)
                         campo_real = campo.replace('_max', '')
                         conditions.append(f"{campo_real} <= ?")
                         params.append(valor)
                     elif campo == 'busca':
+                        # Filtro por texto no nome do medicamento ou princípio ativo
                         conditions.append('(medicamento LIKE ? OR principio_ativo LIKE ?)')
                         params.extend([f"%{valor}%", f"%{valor}%"])
                     else:
+                        # Igualdade direta
                         conditions.append(f"{campo} = ?")
                         params.append(valor)
                 
                 if conditions:
+                    # Adiciona a cláusula WHERE com as condições montadas
                     query += ' WHERE ' + ' AND '.join(conditions)
             
-            query += ' ORDER BY medicamento'
+            query += ' ORDER BY medicamento'  # Ordena por nome do medicamento
             
             cursor.execute(query, params)
-            return [dict(row) for row in cursor.fetchall()]
+            return [dict(row) for row in cursor.fetchall()]  # Retorna como lista de dicionários
     
     def verificar_estoque_baixo(self):
         """
@@ -181,13 +190,14 @@ class GerenciadorFarmacia:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
+            # Seleciona todos os medicamentos com quantidade menor que o mínimo permitido
             cursor.execute('''
                 SELECT * FROM farmacia
                 WHERE quantidade < minimo_estoque
                 ORDER BY quantidade ASC
             ''')
             
-            return [dict(row) for row in cursor.fetchall()]
+            return [dict(row) for row in cursor.fetchall()]  # Retorna resultados formatados
 
 # Exemplo de uso
 if __name__ == "__main__":

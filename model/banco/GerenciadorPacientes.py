@@ -1,11 +1,13 @@
 import sqlite3
 from typing import Optional, Dict, Any, List
-
+from banco.GerenciadorFila import *
 
 class GerenciadorPacientes:
     def __init__(self, db_name: str = 'hospital.db'):
         self.db_name = db_name
         self._criar_tabelas()
+        self.gerenciadorFila = GerenciadorFila()
+
 
     def _conectar(self):
         return sqlite3.connect(self.db_name)
@@ -13,63 +15,146 @@ class GerenciadorPacientes:
     def _criar_tabelas(self):
         with self._conectar() as conn:
             cursor = conn.cursor()
-            # Tabela usuarios
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS usuarios (
+                CREATE TABLE IF NOT EXISTS pacientes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nome TEXT NOT NULL,
                     cpf TEXT UNIQUE NOT NULL,
                     telefone TEXT,
-                    email TEXT
-                )
-            ''')
-
-            # Tabela pacientes
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pacientes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usuario_id INTEGER NOT NULL,
+                    email TEXT,
                     data_nascimento TEXT,
                     sexo TEXT,
                     tipo_sanguineo TEXT,
                     endereco TEXT,
-                    status TEXT NOT NULL,
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-                )
+                    status TEXT NOT NULL DEFAULT 'ativo'
+                );
             ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS historico_atendimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    paciente_id INTEGER NOT NULL,
+                    usuario_id INTEGER,
+                    data TEXT NOT NULL,
+                    sintomas TEXT,
+                    descricao TEXT,
+                    diagnostico TEXT,
+                    status TEXT DEFAULT 'pendente'
+                );
+            ''')
+
             conn.commit()
 
-    def inserir_usuario(self, nome: str, cpf: str, telefone: Optional[str], email: Optional[str]) -> int:
+    def paciente_existe(self, id_paciente):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM pacientes WHERE id = ?", (id_paciente,))
+            return cursor.fetchone() is not None
+
+    def cadastrar_ou_reativar(self, nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, status FROM pacientes WHERE cpf = ?", (cpf,))
+            resultado = cursor.fetchone()
+
+            if resultado:
+                paciente_id, status_atual = resultado
+                # Se já existe e está inativo, reativar
+                if status_atual.lower() == "inativo":
+                    cursor.execute("UPDATE pacientes SET status = 'ativo' WHERE id = ?", (paciente_id,))
+                    conn.commit()
+                    print(f"Paciente com CPF {cpf} reativado.")
+                    self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
+
+                else:
+                    print(f"Paciente com CPF {cpf} já está ativo.")
+                    #self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
+
+                return paciente_id
+
+            # Caso não exista, criar novo
+            cursor.execute('''
+                INSERT INTO pacientes (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ativo')
+            ''', (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco))
+            conn.commit()
+            novo_id = cursor.lastrowid
+            print(f"Novo paciente criado com ID {novo_id}.")
+            return novo_id
+
+
+        # Verifica se o paciente de fato está no banco
+        teste = self.consultar(filtros={"id": id_paciente})
+        print("Consulta paciente por ID:", teste)
+        # Agora fora do `with` (ou use novo `with`), para evitar reuso de conexão antiga
+        if self.gerenciadorFila and id_paciente:
+            try:
+                self.gerenciadorFila.adicionar_paciente_fila(id_paciente=id_paciente, tipo_fila=0, prioridade=3)
+            except Exception as e:
+                print(f"Erro ao adicionar paciente à fila: {e}")
+                return None
+
+        return id_paciente
+    def finalizar_ultimo_atendimento(self, paciente_id: int):
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT OR IGNORE INTO usuarios (nome, cpf, telefone, email)
-                VALUES (?, ?, ?, ?)
-            ''', (nome, cpf, telefone, email))
-            conn.commit()
-            cursor.execute("SELECT id FROM usuarios WHERE cpf = ?", (cpf,))
-            return cursor.fetchone()[0]
+                SELECT id FROM historico_atendimentos
+                WHERE paciente_id = ?
+                ORDER BY data DESC
+                LIMIT 1
+            ''', (paciente_id,))
+            atendimento = cursor.fetchone()
 
-    def inserir_paciente(self, usuario_id: int, data_nascimento: str, sexo: str,
-                         tipo_sanguineo: str, endereco: str, status: str) -> int:
+            if atendimento:
+                atendimento_id = atendimento[0]
+                cursor.execute('''
+                    UPDATE historico_atendimentos
+                    SET status = 'finalizado'
+                    WHERE id = ?
+                ''', (atendimento_id,))
+                conn.commit()
+                print(f"Atendimento {atendimento_id} finalizado com sucesso.")
+            else:
+                print("Nenhum atendimento encontrado para finalizar.")
+
+    def registrar_atendimento(self, paciente_id: int, sintomas: str, descricao: str, diagnostico: str, status: str = "pendente", usuario_id: Optional[int] = None):
+        if not diagnostico or diagnostico.strip() == "":
+            print("Diagnóstico não pode estar vazio.")
+            return
+
+        # Verificar se o paciente existe antes de inserir
+        if not self.paciente_existe(paciente_id):
+            print(f"Erro: paciente com ID {paciente_id} não existe.")
+            return
+
+        with self._conectar() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO historico_atendimentos (paciente_id, usuario_id, data, sintomas, descricao, diagnostico, status)
+                    VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
+                ''', (paciente_id, usuario_id, sintomas, descricao, diagnostico, status))
+                conn.commit()
+                print("Atendimento registrado com sucesso!")
+            except sqlite3.IntegrityError as e:
+                print(f"Erro ao registrar atendimento: {e}")
+
+    def obter_historico_paciente(self, paciente_id: int) -> List[Dict[str, Any]]:
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT OR IGNORE INTO pacientes (usuario_id, data_nascimento, sexo, tipo_sanguineo, endereco, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (usuario_id, data_nascimento, sexo, tipo_sanguineo, endereco, status))
-            conn.commit()
-            print(f"Paciente vinculado ao usuário ID {usuario_id} inserido.")
-            return cursor.lastrowid
+                SELECT data, sintomas, descricao, diagnostico, status
+                FROM historico_atendimentos
+                WHERE paciente_id = ?
+                ORDER BY data DESC
+            ''', (paciente_id,))
+            colunas = [desc[0] for desc in cursor.description]
+            return [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
     def consultar(self, filtros: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         with self._conectar() as conn:
             cursor = conn.cursor()
-            query = '''
-                SELECT p.*, u.nome, u.cpf, u.telefone, u.email
-                FROM pacientes p
-                JOIN usuarios u ON p.usuario_id = u.id
-            '''
+            query = 'SELECT * FROM pacientes'
             params = []
 
             if filtros:
@@ -98,11 +183,19 @@ class GerenciadorPacientes:
                 WHERE id = ?
             ''', valores)
             conn.commit()
-            print(f"Paciente ID {id_paciente} atualizado.")
 
     def remover(self, id_paciente: int):
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM pacientes WHERE id = ?", (id_paciente,))
             conn.commit()
-            print(f"Paciente ID {id_paciente} removido.")
+
+    def encerrar_atendimento(self, id_paciente: int):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE pacientes
+                SET status = 'desativo'
+                WHERE id = ?
+            ''', (id_paciente,))
+            conn.commit()

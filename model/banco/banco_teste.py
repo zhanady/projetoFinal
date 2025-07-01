@@ -60,3 +60,40 @@ def testar_busca():
 
 #if __name__ == "__main__":
 #    testar_busca()
+
+from GerenciadorUsuarios import GerenciadorUsuarios  # ajuste conforme seu projeto
+
+ger = GerenciadorUsuarios()
+ger._criar_tabela()
+# Inserir Caetano (tipo 0)
+ger.inserir(
+    nome="Caetano",
+    email="caetano@gmail.com",
+    senha="1234",
+    tipo=0
+)
+
+# Inserir Zainab (tipo 1)
+ger.inserir(
+    nome="Zainab",
+    email="zainab@gmail.com",
+    senha="1234",
+    tipo=1
+)
+
+ger.inserir(
+    nome="Julia",
+    email="julia@gmail.com",
+    senha="1234",
+    tipo=2
+)
+
+from GerenciadorPacientes import *
+
+ger = GerenciadorPacientes()
+ger._criar_tabelas()
+
+from GerenciadorFila import *
+
+ger = GerenciadorFila()
+ger._criar_tabelas()

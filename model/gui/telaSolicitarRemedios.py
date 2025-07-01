@@ -1,8 +1,11 @@
 import customtkinter as ctk
+from banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia
 
 class TelaSolicitarMedicamento(ctk.CTkToplevel):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, atualizar_callback=None, **kwargs):
         super().__init__(master, **kwargs)
+        self.gerenciador = GerenciadorPedidosFarmacia()
+        self.atualizar_callback = atualizar_callback
 
         self.title("Solicitar Medicamento")
         self.geometry("400x400")
@@ -34,11 +37,27 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
         qtd = self.quantidade.get()
         obs = self.obs.get("1.0", "end").strip()
 
-        print(f"📦 Solicitação de medicamento:")
-        print(f"→ Nome: {nome}")
-        print(f"→ Concentração: {conc}")
-        print(f"→ Quantidade: {qtd}")
-        print(f"→ Observações: {obs}")
+        if not nome or not conc or not qtd:
+            print("❗ Preencha todos os campos obrigatórios.")
+            return
 
-        # Aqui você pode chamar uma função para enviar ao banco, API, etc.
-        self.destroy()
+        try:
+            dados = {
+                "medicamento": nome,
+                "principio_ativo": nome,  # ou você pode deixar um campo separado depois
+                "concentracao": conc,
+                "quantidade_solicitada": int(qtd),
+                "urgencia": "media"  # ou você pode tornar isso um campo selecionável
+            }
+
+            self.gerenciador.registrar_pedido(dados)
+            print("✔ Pedido registrado com sucesso.")
+
+            if self.atualizar_callback:
+                self.atualizar_callback()  # atualiza a lista na TelaPedidos
+
+            self.destroy()
+
+        except Exception as e:
+            print(f"Erro ao registrar pedido: {e}")
+
