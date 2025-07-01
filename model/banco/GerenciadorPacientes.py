@@ -79,7 +79,17 @@ class GerenciadorPacientes:
             conn.commit()
             novo_id = cursor.lastrowid
             print(f"Novo paciente criado com ID {novo_id}.")
+
+            # Adiciona à fila
+            if self.gerenciadorFila:
+                try:
+                    self.gerenciadorFila.adicionar_paciente_fila(id_paciente=novo_id, tipo_fila=0, prioridade=3)
+                    print("Paciente adicionado à fila.")
+                except Exception as e:
+                    print(f"Erro ao adicionar novo paciente à fila: {e}")
+
             return novo_id
+
 
 
         # Verifica se o paciente de fato está no banco
