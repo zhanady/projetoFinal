@@ -35,7 +35,6 @@ class GerenciadorProfissionais:
                     departamento TEXT NOT NULL,
                     registro TEXT,
                     status TEXT NOT NULL,
-                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                 )
             ''')
             conn.commit()

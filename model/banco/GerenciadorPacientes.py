@@ -27,28 +27,102 @@ class GerenciadorPacientes:
                     tipo_sanguineo TEXT,
                     endereco TEXT,
                     status TEXT NOT NULL DEFAULT 'ativo'
-                )
+                );
             ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS historico_atendimentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    paciente_id INTEGER NOT NULL,
+                    usuario_id INTEGER,
+                    data TEXT NOT NULL,
+                    sintomas TEXT,
+                    descricao TEXT,
+                    diagnostico TEXT,
+                    status TEXT DEFAULT 'pendente'
+                );
+            ''')
+
             conn.commit()
 
-    def inserir_paciente(self, nome: str, cpf: str, telefone: Optional[str], email: Optional[str],
-                            data_nascimento: str, sexo: str, tipo_sanguineo: str,
-                            endereco: str, status: str = 'ativo') -> int:
+    def paciente_existe(self, id_paciente):
         with self._conectar() as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT id FROM pacientes WHERE id = ?", (id_paciente,))
+            return cursor.fetchone() is not None
+
+    def inserir_paciente(self, nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status='ativo'):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+
+            # Ativar verificação de chave estrangeira no SQLite
+
             cursor.execute('''
-                INSERT OR IGNORE INTO pacientes
+                INSERT OR IGNORE INTO pacientes 
                 (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status))
+            
             conn.commit()
             id_paciente = cursor.lastrowid
 
-        # Adiciona paciente na fila de triagem (tipo_fila=0)
+            # Se paciente já existia (CPF duplicado), buscar ID
+            if id_paciente == 0:
+                cursor.execute("SELECT id FROM pacientes WHERE cpf = ?", (cpf,))
+                resultado = cursor.fetchone()
+                if resultado:
+                    id_paciente = resultado[0]
+                else:
+                    print("Erro: paciente não foi inserido e também não foi encontrado por CPF.")
+                    return None
+        # VERIFICAÇÃO AQUI:
+        print("ID do paciente obtido:", id_paciente)
+
+        # Verifica se o paciente de fato está no banco
+        teste = self.consultar(filtros={"id": id_paciente})
+        print("Consulta paciente por ID:", teste)
+        # Agora fora do `with` (ou use novo `with`), para evitar reuso de conexão antiga
         if self.gerenciadorFila and id_paciente:
-            self.gerenciadorFila.adicionar_paciente_fila(id_paciente=id_paciente, tipo_fila=0, prioridade=3)
+            try:
+                self.gerenciadorFila.adicionar_paciente_fila(id_paciente=id_paciente, tipo_fila=0, prioridade=3)
+            except Exception as e:
+                print(f"Erro ao adicionar paciente à fila: {e}")
+                return None
 
         return id_paciente
+
+    def registrar_atendimento(self, paciente_id: int, sintomas: str, descricao: str, diagnostico: str, status: str = "pendente", usuario_id: Optional[int] = None):
+        if not diagnostico or diagnostico.strip() == "":
+            print("Diagnóstico não pode estar vazio.")
+            return
+
+        # Verificar se o paciente existe antes de inserir
+        if not self.paciente_existe(paciente_id):
+            print(f"Erro: paciente com ID {paciente_id} não existe.")
+            return
+
+        with self._conectar() as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO historico_atendimentos (paciente_id, usuario_id, data, sintomas, descricao, diagnostico, status)
+                    VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
+                ''', (paciente_id, usuario_id, sintomas, descricao, diagnostico, status))
+                conn.commit()
+                print("Atendimento registrado com sucesso!")
+            except sqlite3.IntegrityError as e:
+                print(f"Erro ao registrar atendimento: {e}")
+
+    def obter_historico_paciente(self, paciente_id: int) -> List[Dict[str, Any]]:
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT data, sintomas, descricao, diagnostico, status
+                FROM historico_atendimentos
+                WHERE paciente_id = ?
+                ORDER BY data DESC
+            ''', (paciente_id,))
+            colunas = [desc[0] for desc in cursor.description]
+            return [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
     def consultar(self, filtros: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         with self._conectar() as conn:

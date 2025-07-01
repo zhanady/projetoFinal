@@ -2,6 +2,8 @@ import customtkinter as ctk
 from PIL import Image
 import os
 from banco.GerenciadorFila import GerenciadorFila
+from banco.GerenciadorPacientes import *
+
 
 class TelaFila(ctk.CTkFrame):
     def __init__(self, master, abrir_atendimento_callback=None, **kwargs):
@@ -65,5 +67,17 @@ class TelaFila(ctk.CTkFrame):
             ).pack(pady=(0, 10))
 
     def mostrar_atendimento(self, paciente):
-        pass
-        
+        if self.abrir_atendimento_callback:
+            paciente_id = paciente.get("id") or paciente.get("id_paciente")
+            if not paciente_id:
+                print(f"[ERRO] Paciente não tem ID válido: {paciente}")
+                return
+
+            gerenciador = GerenciadorPacientes()
+            id_paciente = paciente.get("id_paciente") or paciente.get("id")
+            paciente_completo = gerenciador.consultar(filtros={"id": id_paciente})
+
+            if paciente_completo:
+                self.abrir_atendimento_callback(paciente_completo[0])
+            else:
+                print(f"[ERRO] Paciente ID {paciente_id} não encontrado no banco.")
