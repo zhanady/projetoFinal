@@ -92,7 +92,7 @@ class AppAtendente(ctk.CTkFrame):
                 print("⚠ Nome e CPF são obrigatórios.")
                 return
 
-            id_paciente = self.gerenciador.inserir_paciente(
+            id_paciente = self.gerenciador.cadastrar_ou_reativar(
                 nome, cpf, telefone, email, data_nasc, sexo,
                 tipo_sang, endereco
             )

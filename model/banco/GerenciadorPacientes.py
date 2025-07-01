@@ -50,32 +50,37 @@ class GerenciadorPacientes:
             cursor.execute("SELECT id FROM pacientes WHERE id = ?", (id_paciente,))
             return cursor.fetchone() is not None
 
-    def inserir_paciente(self, nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status='ativo'):
+    def cadastrar_ou_reativar(self, nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco):
         with self._conectar() as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT id, status FROM pacientes WHERE cpf = ?", (cpf,))
+            resultado = cursor.fetchone()
 
-            # Ativar verificação de chave estrangeira no SQLite
+            if resultado:
+                paciente_id, status_atual = resultado
+                # Se já existe e está inativo, reativar
+                if status_atual.lower() == "inativo":
+                    cursor.execute("UPDATE pacientes SET status = 'ativo' WHERE id = ?", (paciente_id,))
+                    conn.commit()
+                    print(f"Paciente com CPF {cpf} reativado.")
+                    self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
 
-            cursor.execute('''
-                INSERT OR IGNORE INTO pacientes 
-                (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status))
-            
-            conn.commit()
-            id_paciente = cursor.lastrowid
-
-            # Se paciente já existia (CPF duplicado), buscar ID
-            if id_paciente == 0:
-                cursor.execute("SELECT id FROM pacientes WHERE cpf = ?", (cpf,))
-                resultado = cursor.fetchone()
-                if resultado:
-                    id_paciente = resultado[0]
                 else:
-                    print("Erro: paciente não foi inserido e também não foi encontrado por CPF.")
-                    return None
-        # VERIFICAÇÃO AQUI:
-        print("ID do paciente obtido:", id_paciente)
+                    print(f"Paciente com CPF {cpf} já está ativo.")
+                    #self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
+
+                return paciente_id
+
+            # Caso não exista, criar novo
+            cursor.execute('''
+                INSERT INTO pacientes (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ativo')
+            ''', (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco))
+            conn.commit()
+            novo_id = cursor.lastrowid
+            print(f"Novo paciente criado com ID {novo_id}.")
+            return novo_id
+
 
         # Verifica se o paciente de fato está no banco
         teste = self.consultar(filtros={"id": id_paciente})
@@ -89,6 +94,28 @@ class GerenciadorPacientes:
                 return None
 
         return id_paciente
+    def finalizar_ultimo_atendimento(self, paciente_id: int):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id FROM historico_atendimentos
+                WHERE paciente_id = ?
+                ORDER BY data DESC
+                LIMIT 1
+            ''', (paciente_id,))
+            atendimento = cursor.fetchone()
+
+            if atendimento:
+                atendimento_id = atendimento[0]
+                cursor.execute('''
+                    UPDATE historico_atendimentos
+                    SET status = 'finalizado'
+                    WHERE id = ?
+                ''', (atendimento_id,))
+                conn.commit()
+                print(f"Atendimento {atendimento_id} finalizado com sucesso.")
+            else:
+                print("Nenhum atendimento encontrado para finalizar.")
 
     def registrar_atendimento(self, paciente_id: int, sintomas: str, descricao: str, diagnostico: str, status: str = "pendente", usuario_id: Optional[int] = None):
         if not diagnostico or diagnostico.strip() == "":

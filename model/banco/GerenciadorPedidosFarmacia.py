@@ -1,9 +1,12 @@
 import sqlite3
 from datetime import datetime
+from banco.GerenciadorFarmacias import *
 
 class GerenciadorPedidosFarmacia:
     def __init__(self, db_name='hospital.db'):
         self.db_name = db_name
+        self.farmacia = GerenciadorFarmacia(db_name)
+
         self._criar_tabela()
 
     def _conectar(self):
@@ -69,15 +72,22 @@ class GerenciadorPedidosFarmacia:
 
     def confirmar_pedido(self, pedido_id: int, medicamento: str, quantidade: int) -> bool:
         """
-        Marca o pedido como finalizado e atualiza o estoque do medicamento.
+        Marca o pedido como finalizado e atualiza o estoque do medicamento usando GerenciadorFarmacia.
         """
         try:
             with self._conectar() as conn:
                 cursor = conn.cursor()
 
-                # 1. Verifica o estoque atual
-                cursor.execute('SELECT id, quantidade FROM farmacia WHERE medicamento = ?', (medicamento,))
+                # 1. Verifica o estoque atual via nome
+                cursor.execute('''
+                    SELECT id, quantidade FROM farmacia 
+                    WHERE LOWER(medicamento) = LOWER(?) 
+                    OR LOWER(principio_ativo) = LOWER(?)
+                ''', (medicamento, medicamento))
+
                 row = cursor.fetchone()
+                print(f"Buscando '{medicamento}'... Resultado: {row}")
+
                 if not row:
                     print(f"Medicamento '{medicamento}' não encontrado.")
                     return False
@@ -87,9 +97,12 @@ class GerenciadorPedidosFarmacia:
                     print(f"Estoque insuficiente para '{medicamento}'.")
                     return False
 
-                # 2. Atualiza estoque
+                # 2. Atualiza o estoque usando o GerenciadorFarmacia
                 novo_estoque = estoque_atual - quantidade
-                cursor.execute('UPDATE farmacia SET quantidade = ? WHERE id = ?', (novo_estoque, id_medicamento))
+                sucesso = self.farmacia.atualizar_estoque(id_medicamento, novo_estoque)
+                if not sucesso:
+                    print("Erro ao atualizar estoque.")
+                    return False
 
                 # 3. Marca pedido como finalizado
                 cursor.execute('UPDATE pedidos_farmacia SET status = ? WHERE id = ?', ('finalizado', pedido_id))
@@ -100,3 +113,4 @@ class GerenciadorPedidosFarmacia:
         except Exception as e:
             print(f"Erro ao confirmar pedido: {e}")
             return False
+

@@ -103,25 +103,37 @@ class TelaMedico(ctk.CTkFrame):
 
     def dar_alta(self):
         try:
-            paciente_id = self.paciente.get("id")
+            # Obter o ID correto do paciente
+            paciente_id = self.paciente.get("id_paciente") or self.paciente.get("id")
             if not paciente_id:
                 print("Paciente inválido (sem ID).")
+                msgbox.showerror("Erro", "Paciente inválido (sem ID).")
                 return
 
+            # Verificar se o paciente existe no banco
             paciente_banco = self.gerenciador.consultar({"id": paciente_id})
             if not paciente_banco:
                 print(f"Paciente ID {paciente_id} não encontrado no banco.")
                 msgbox.showerror("Erro", f"Paciente ID {paciente_id} não encontrado no banco.")
                 return
 
-            self.gerenciador_fila.remover_paciente_fila(self.paciente["id"], tipo_fila=2)
-            msgbox.showinfo("Alta concluída", "Paciente removido da fila de atendimento médico.")
-            print("Paciente removido da fila de atendimento.")
-            msgbox.showinfo("Alta concluída", "Paciente removido da fila.\nVocê pode retornar à fila para ver a atualização.")
+            # Atualizar o status do paciente para 'inativo'
+            self.gerenciador.atualizar(id_paciente=paciente_id, novos_dados={"status": "inativo"})
+            print("Status do paciente atualizado para inativo.")
+            self.gerenciador.finalizar_ultimo_atendimento(paciente_id)
+
+
+            # Remover da fila de atendimento médico (tipo_fila = 1)
+            self.gerenciador_fila.remover_paciente_fila(paciente_id, tipo_fila=1)
+            print("Paciente removido da fila de atendimento médico.")
+
+            msgbox.showinfo("Alta concluída", "Paciente recebeu alta com sucesso e foi removido da fila.")
+            self.master.master.mostrar_fila()  # Voltar para a tela de fila atualizada
 
         except Exception as e:
             print(f"Erro ao dar alta: {e}")
             msgbox.showerror("Erro", f"Erro ao dar alta: {e}")
+
 
 
     def salvar_dados(self):

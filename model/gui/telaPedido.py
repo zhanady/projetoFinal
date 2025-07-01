@@ -5,6 +5,9 @@ class TelaPedidos(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, fg_color="white", **kwargs)
         self.gerenciador = GerenciadorPedidosFarmacia()
+        # ctk.CTkButton(self, text="Atualizar Lista", command=self.atualizar_lista_pedidos,
+        #               fg_color="gray", text_color="white").pack(pady=(0, 10))
+        self.cards_widgets = {}  # chave = id do pedido, valor = widget (card)
 
         self.scroll_frame = ctk.CTkScrollableFrame(
             self,
@@ -27,6 +30,8 @@ class TelaPedidos(ctk.CTkFrame):
 
         for i, pedido in enumerate(pedidos):
             card = ctk.CTkFrame(self.scroll_frame, fg_color="#F3F4F6", corner_radius=10)
+            self.cards_widgets[pedido["id"]] = card
+
             card.grid(row=i // 2, column=i % 2, padx=15, pady=15, sticky="nsew")
 
             urgencia = pedido.get("urgencia", "baixa")
@@ -51,6 +56,13 @@ class TelaPedidos(ctk.CTkFrame):
         sucesso = self.gerenciador.confirmar_pedido(pedido_id, medicamento_nome, quantidade)
         if sucesso:
             print(f"✔ Pedido {pedido_id} confirmado.")
-            self.atualizar_lista_pedidos()
+
+            # Remover o card visualmente
+            card = self.cards_widgets.pop(pedido_id, None)
+            if card:
+                card.destroy()
+
+            # Opcional: print no console ou toast
+            # self.atualizar_lista_pedidos()  # NÃO é necessário mais chamar se removemos o card direto
         else:
             print(f"Erro ao confirmar pedido {pedido_id}. Verifique estoque ou dados.")

@@ -14,7 +14,7 @@ class TelaFarmaceutico(ctk.CTkFrame):
         self.menu_relatorio_visivel = False
 
         self.relatorio_menu = MenuRelatorios(self)
-        self.relatorio_menu.place_forget()
+
 
         # Sidebar
         self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#F8F9FA", border_width=1)
