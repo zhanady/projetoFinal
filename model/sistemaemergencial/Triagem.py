@@ -1,4 +1,5 @@
-from model.sistemaemergencial.FilaAtendimento import FilaAtendimento
+from projetoFinal.model.sistemaemergencial.FilaAtendimento import FilaAtendimento
+from projetoFinal.model.usuarios.Paciente import PacienteBuilder
 
 
 class Triagem:
@@ -10,10 +11,11 @@ class Triagem:
     AZUL = 5
     FILA = FilaAtendimento.get_instancia()
 
-    def __init__(self, paciente, escala_dor, escala_sang, escala_glascow, sinais_vitais):
+    def __init__(self, paciente, escala_dor#, escala_sang
+                 , escala_glascow, sinais_vitais):
         self.paciente = paciente
         self.escala_dor = escala_dor
-        self.escala_sang = escala_sang
+        # self.escala_sang = escala_sang
         self.escala_glascow = escala_glascow
         self.sinais_vitais = sinais_vitais
         self.cor_pulseira = 5
@@ -67,21 +69,21 @@ class Triagem:
 
         ponto_escala_sangue = 1
         # Se o paciente for recém-nascido
-        if self.paciente.get_idade() == 0:
-            media_sangue = self.paciente.get_peso() * 0.09
+        # if self.paciente.get_idade() == 0:
+        #     media_sangue = self.paciente.get_peso() * 0.09
         # Se o paciente tiver menos de 15 anos ou for masculino
-        elif self.paciente.get_idade() <= 14 or self.paciente.get_sexo() == 'M':
-            media_sangue = self.paciente.get_peso() * 0.075
+        # elif self.paciente.get_idade() <= 14 or self.paciente.get_sexo() == 'M':
+        #     media_sangue = self.paciente.get_peso() * 0.075
         # Se a paciente é feminina
-        else:
-            media_sangue = self.paciente.get_peso() * 0.065
+        # else:
+        #     media_sangue = self.paciente.get_peso() * 0.065
 
         # Perdeu mais de 30% do sangue
-        if self.escala_sang < media_sangue * 0.7:
-            ponto_escala_sangue = -1
+        # if self.escala_sang < media_sangue * 0.7:
+        #     ponto_escala_sangue = -1
         # Perdeu mais de 20% do sangue
-        elif self.escala_sang < media_sangue * 0.8:
-            ponto_escala_sangue = 0
+        # elif self.escala_sang < media_sangue * 0.8:
+        #     ponto_escala_sangue = 0
 
         ponto_escala_glascow = 1
         # Se a pontuação for 3 (a menor possível), o paciente precisa muito de atendimento
@@ -98,7 +100,7 @@ class Triagem:
         elif self.escala_dor > 6:
             ponto_escala_dor = 0
 
-        cor_pulseira = ponto_sinais_vitais + ponto_escala_sangue + ponto_escala_glascow + ponto_escala_dor + 1
+        cor_pulseira = ponto_sinais_vitais + ponto_escala_glascow + ponto_escala_dor + 2
         if cor_pulseira < 0:
             cor_pulseira = 0
         self.cor_pulseira = cor_pulseira
@@ -112,3 +114,17 @@ class Triagem:
 
     def get_cor_pulseira(self):
         return self.cor_pulseira
+
+if __name__ == "__main__":
+    builder = (PacienteBuilder().set_cpf("1234")
+               .set_nome("Josh")
+               .set_idade(42)
+               .set_categoria(0)
+               .set_peso(74)
+                )
+    paciente = builder.build()
+    triagem = Triagem(paciente, 7, 9, 100)
+    paciente.set_triagem(triagem)
+    triagem.definir_prioridade()
+    print(triagem.get_cor_pulseira())
+

@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 
 
 class GerenciadorLeitos:
-    def __init__(self, db_name: str = 'hospital.db'):
+    def __init__(self, db_name: str = '../hospital.db'):
         self.db_name = db_name
         self._criar_tabela()
 

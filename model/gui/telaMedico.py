@@ -1,11 +1,11 @@
 import customtkinter as ctk
-from gui.telaFila import TelaFila
-from gui.telaChat import ChatScreen
-from gui.telaRelatorios import MenuRelatorios
-from gui.telaSolicitarRemedios import TelaSolicitarMedicamento
-from gui.telaLeitos import TelaLeitos
-from banco.GerenciadorPacientes import GerenciadorPacientes
-from banco.GerenciadorFila import GerenciadorFila
+from projetoFinal.model.gui.telaFila import TelaFila
+from projetoFinal.model.gui.telaChat import ChatScreen
+from projetoFinal.model.gui.telaRelatorios import MenuRelatorios
+from projetoFinal.model.gui.telaSolicitarRemedios import TelaSolicitarMedicamento
+from projetoFinal.model.gui.telaLeitos import TelaLeitos
+from projetoFinal.model.banco.GerenciadorPacientes import GerenciadorPacientes
+from projetoFinal.model.banco.GerenciadorFila import GerenciadorFila
 import tkinter.messagebox as msgbox
 
 

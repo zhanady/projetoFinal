@@ -1,9 +1,9 @@
 import sqlite3
 from typing import Optional, Dict, Any, List
-from banco.GerenciadorFila import *
+from projetoFinal.model.banco.GerenciadorFila import *
 
 class GerenciadorPacientes:
-    def __init__(self, db_name: str = 'hospital.db'):
+    def __init__(self, db_name: str = '../hospital.db'):
         self.db_name = db_name
         self._criar_tabelas()
         self.gerenciadorFila = GerenciadorFila()
@@ -13,8 +13,24 @@ class GerenciadorPacientes:
         return sqlite3.connect(self.db_name)
 
     def _criar_tabelas(self):
+        """
+            Cria as tabelas necessárias para o funcionamento da lógica dos pacientes:
+            primeiro cria a tabela de triagem, depois a tabela de pacientes e por fim
+            a tabela de histórico
+        """
         with self._conectar() as conn:
             cursor = conn.cursor()
+
+
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS triagem (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    escala_dor INTEGER NOT NULL,
+                    escala_glascow INTEGER NOT NULL
+                    sinais_vitais INTEGER NOT NULL
+                );
+            ''')
+
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS pacientes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

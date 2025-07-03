@@ -1,6 +1,6 @@
 import inspect
 
-from model.usuarios.Usuario import Usuario
+from projetoFinal.model.usuarios.Usuario import Usuario
 
 
 class Paciente(Usuario):
@@ -85,6 +85,9 @@ class Paciente(Usuario):
 
     def get_historico(self):
         return self.historico
+
+    def set_triagem(self, triagem):
+        self.triagem = triagem
 
 
 # Como Paciente tem vários atributos, achei conveniente criar uma classe Builder só para

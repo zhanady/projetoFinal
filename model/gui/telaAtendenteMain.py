@@ -1,7 +1,7 @@
 import customtkinter as ctk
-from gui.telaChat import ChatScreen
-from gui.telaRelatorios import MenuRelatorios
-from banco.GerenciadorPacientes import GerenciadorPacientes
+from projetoFinal.model.gui.telaChat import ChatScreen
+from projetoFinal.model.gui.telaRelatorios import MenuRelatorios
+from projetoFinal.model.banco.GerenciadorPacientes import GerenciadorPacientes
 
 class AppAtendente(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -54,7 +54,8 @@ class AppAtendente(ctk.CTkFrame):
             self.entries.append(entry)
 
         self.entries_right = []
-        labels_right = ["Tipo sanguíneo", "Endereco"]
+        labels_right = ["Tipo sanguíneo", "Endereco", "Escala Dor",
+                        "Escala Glasgow", "Batimentos por Minuto"]
         for i, label in enumerate(labels_right):
             ctk.CTkLabel(self.main_frame, text=label).grid(row=i + 2, column=2, padx=10, pady=5, sticky="w")
             entry = ctk.CTkEntry(self.main_frame, width=250)

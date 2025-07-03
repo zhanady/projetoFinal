@@ -1,8 +1,8 @@
 import customtkinter as ctk
 from PIL import Image
 import os
-from banco.GerenciadorFila import GerenciadorFila
-from banco.GerenciadorPacientes import *
+from projetoFinal.model.banco.GerenciadorFila import GerenciadorFila
+from projetoFinal.model.banco.GerenciadorPacientes import *
 
 
 class TelaFila(ctk.CTkFrame):
@@ -31,7 +31,7 @@ class TelaFila(ctk.CTkFrame):
         self.container_atendimento = ctk.CTkFrame(self, fg_color="#F5F5F5", corner_radius=10)
         self.container_atendimento.pack(fill="x", padx=30, pady=(10, 20))
 
-        self.avatar_img = ctk.CTkImage(light_image=Image.open("model/gui/icons/user.png"), size=(50, 50))
+        self.avatar_img = ctk.CTkImage(light_image=Image.open("gui/icons/user.png"), size=(50, 50))
         self.atualizar_fila()
 
     def atualizar_fila(self):

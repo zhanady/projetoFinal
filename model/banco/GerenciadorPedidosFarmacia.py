@@ -1,9 +1,9 @@
 import sqlite3
 from datetime import datetime
-from banco.GerenciadorFarmacias import *
+from projetoFinal.model.banco.GerenciadorFarmacias import *
 
 class GerenciadorPedidosFarmacia:
-    def __init__(self, db_name='hospital.db'):
+    def __init__(self, db_name='../hospital.db'):
         self.db_name = db_name
         self.farmacia = GerenciadorFarmacia(db_name)
 

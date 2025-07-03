@@ -1,6 +1,6 @@
 # tela_login.py
 import customtkinter as ctk
-from banco.GerenciadorUsuarios import *
+from projetoFinal.model.banco.GerenciadorUsuarios import *
 
 
 class TelaLogin(ctk.CTkFrame):

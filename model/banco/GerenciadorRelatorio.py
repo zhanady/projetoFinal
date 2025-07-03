@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 
 
 class GerenciadorRelatorio:
-    def __init__(self, db_name: str = 'usuarios.db'):
+    def __init__(self, db_name: str = '../usuarios.db'):
         self.db_name = db_name
         self._criar_tabela()
 

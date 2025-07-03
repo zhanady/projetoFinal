@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 class GerenciadorFila:
-    def __init__(self, db_name='hospital.db'):
+    def __init__(self, db_name='../hospital.db'):
         """Inicializa a classe e cria as tabelas necessárias"""
         self.db_name = db_name
         self._criar_tabelas()

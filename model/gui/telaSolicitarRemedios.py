@@ -1,5 +1,6 @@
 import customtkinter as ctk
-from banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia
+from projetoFinal.model.banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia
+
 
 class TelaSolicitarMedicamento(ctk.CTkToplevel):
     def __init__(self, master, atualizar_callback=None, **kwargs):
@@ -60,4 +61,3 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
 
         except Exception as e:
             print(f"Erro ao registrar pedido: {e}")
-

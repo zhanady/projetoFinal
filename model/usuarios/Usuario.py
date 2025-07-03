@@ -1,8 +1,8 @@
 class Usuario:
     # categorias
-    ADMIN = 0
-    FUNCIONARIO = 1
-    CLIENTE = 2
+    MEDICO = 0
+    ATENDENTE = 1
+    FARMACEUTICA = 2
 
     def __init__(self, login, senha, categoria):
         # verifica se a categoria posta como argumento existe

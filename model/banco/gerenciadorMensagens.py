@@ -2,7 +2,7 @@ import sqlite3
 import json
 
 class GerenciadorMensagens:
-    def __init__(self, db_name='hospital.db'):
+    def __init__(self, db_name='../hospital.db'):
         """Inicializa a classe e cria a tabela se não existir"""
         self.db_name = db_name
         self._criar_tabela()
