@@ -44,7 +44,8 @@ class TelaFarmaceutico(ctk.CTkFrame):
               command=self.mostrar_chat).pack(pady=5, padx=10, fill="x")
 
         ctk.CTkButton(self.sidebar, text="Log out", anchor="w",
-                      fg_color="black", text_color="white", hover_color="#333333").pack(side="bottom", pady=20, padx=10, fill="x")
+              fg_color="black", command=self.fechar_app).pack(side="bottom", pady=20, padx=10, fill="x")
+
 
         # Área principal
         self.area_principal = ctk.CTkFrame(self, fg_color="white")
@@ -73,7 +74,8 @@ class TelaFarmaceutico(ctk.CTkFrame):
 
     def mostrar_estoque(self):
         self.trocar_tela(TelaEstoque)
-
+    def fechar_app(self):
+        self.master.destroy()  # Fecha a janela principal (root)
     def mostrar_pedidos(self):
         self.trocar_tela(TelaPedidos)
 

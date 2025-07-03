@@ -36,7 +36,11 @@ class AppAtendente(ctk.CTkFrame):
                       fg_color="black", command=self.mostrar_tela_chat).pack(pady=10, padx=10, fill="x")
 
         ctk.CTkButton(self.sidebar, text="Log out", anchor="w",
-                      fg_color="black").pack(side="bottom", pady=20, padx=10, fill="x")
+              fg_color="black", command=self.fechar_app).pack(side="bottom", pady=20, padx=10, fill="x")
+
+    def fechar_app(self):
+        self.master.destroy()  # Fecha a janela principal (root)
+
 
     def criar_tela_cadastro(self):
         self.main_frame = ctk.CTkFrame(self, fg_color="#F0F0F0")
@@ -64,6 +68,16 @@ class AppAtendente(ctk.CTkFrame):
 
         ctk.CTkButton(self.main_frame, text="Salvar e encaminhar para triagem",
                       fg_color="black", command=self.salvar_paciente).grid(row=10, column=3, pady=40, sticky="e")
+    def mostrar_popup_sucesso(self, mensagem):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Sucesso")
+        popup.geometry("300x120")
+        popup.transient(self)  # Garante que fique acima da janela principal
+        popup.grab_set()       # Modal
+
+        ctk.CTkLabel(popup, text=mensagem, font=("Arial", 14)).pack(pady=20)
+
+        ctk.CTkButton(popup, text="OK", command=popup.destroy).pack(pady=5)
 
     def salvar_paciente(self):
         try:
@@ -98,6 +112,8 @@ class AppAtendente(ctk.CTkFrame):
                 tipo_sang, endereco
             )
             print(f"✔ Paciente cadastrado com ID {id_paciente}")
+            self.mostrar_popup_sucesso("Paciente cadastrado com sucesso!")
+
         except Exception as e:
             print(f"Erro ao salvar paciente: {e}")
 

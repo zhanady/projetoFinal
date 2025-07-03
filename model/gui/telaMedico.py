@@ -7,6 +7,9 @@ from projetoFinal.model.gui.telaLeitos import TelaLeitos
 from projetoFinal.model.banco.GerenciadorPacientes import GerenciadorPacientes
 from projetoFinal.model.banco.GerenciadorFila import GerenciadorFila
 import tkinter.messagebox as msgbox
+from banco.GerenciadorLeitos import GerenciadorLeitos
+from datetime import datetime
+
 
 
 class TelaMedico(ctk.CTkFrame):
@@ -16,6 +19,8 @@ class TelaMedico(ctk.CTkFrame):
         self.chat_screen = None
         self.gerenciador = GerenciadorPacientes()
         self.relatorio_menu = MenuRelatorios(self)
+        self.gerenciador_leitos = GerenciadorLeitos()
+
         self.relatorio_menu.place_forget()
         self.menu_relatorio_visivel = False
         self.gerenciador_fila = GerenciadorFila()
@@ -94,13 +99,112 @@ class TelaMedico(ctk.CTkFrame):
         botoes_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         botoes_frame.pack(fill="x", padx=10, pady=10)
 
-        ctk.CTkButton(botoes_frame, text="Salvar", fg_color="black", text_color="white", command=self.salvar_dados).pack(side="right", padx=5)
-        ctk.CTkButton(botoes_frame, text="Internar", fg_color="black", text_color="white").pack(side="right", padx=5)
-        ctk.CTkButton(botoes_frame, text="Dar alta", fg_color="black", text_color="white", command=self.dar_alta).pack(side="right", padx=5)
+        # Verificar se o paciente já está internado
+        ja_internado = False
+        try:
+            todos_leitos = self.gerenciador_leitos.consultar({
+                "id_paciente": self.paciente["id"]
+            })
+            for leito in todos_leitos:
+                if not leito["data_saida"] or leito["data_saida"] in ("None", ""):
+                    ja_internado = True
+                    break
+        except Exception as e:
+            print(f"Erro ao verificar leito: {e}")
 
-        ctk.CTkButton(botoes_frame, text="Solicitar remédios", fg_color="black", text_color="white", command=self.abrir_solicitacao_medicamento).pack(side="right", padx=5)
-        #ctk.CTkButton(botoes_frame, text="Chamar para atendimento", fg_color="black", text_color="white").pack(side="right", padx=5)
 
+        # Botão Salvar
+        ctk.CTkButton(
+            botoes_frame,
+            text="Salvar",
+            fg_color="black",
+            text_color="white",
+            command=self.salvar_dados
+        ).pack(side="right", padx=5)
+
+        # Botão Internar (só se ainda não internado)
+        if not ja_internado:
+            ctk.CTkButton(
+                botoes_frame,
+                text="Internar",
+                fg_color="black",
+                text_color="white",
+                command=self.internar_paciente
+            ).pack(side="right", padx=5)
+
+        # Botão Dar Alta
+        ctk.CTkButton(
+            botoes_frame,
+            text="Dar alta",
+            fg_color="black",
+            text_color="white",
+            command=self.dar_alta
+        ).pack(side="right", padx=5)
+
+        # Botão Solicitar Remédios
+        ctk.CTkButton(
+            botoes_frame,
+            text="Solicitar remédios",
+            fg_color="black",
+            text_color="white",
+            command=self.abrir_solicitacao_medicamento
+        ).pack(side="right", padx=5)
+
+    def internar_paciente(self):
+        try:
+            paciente_id = self.paciente.get("id")
+            if not paciente_id:
+                msgbox.showerror("Erro", "ID do paciente inválido.")
+                return
+
+            # Verifica se já está internado
+            leitos_ativos = self.gerenciador_leitos.consultar({
+                "id_paciente": paciente_id,
+                "data_saida": None
+            })
+            if leitos_ativos:
+                msgbox.showwarning("Já internado", "Este paciente já está em um leito.")
+                return
+
+            # 🧠 Buscar todos os leitos e verificar os ocupados
+            todos_leitos = self.gerenciador_leitos.consultar()
+            ocupados = {
+                l["numero_leito"]
+                for l in todos_leitos
+                if not l["data_saida"] and l["numero_leito"] is not None
+            }
+
+            # Buscar o primeiro número de leito disponível (ex: de 1 a 8)
+            total_leitos = 8  # pode ser dinâmico
+            numero_disponivel = None
+            for i in range(1, total_leitos + 1):
+                if i not in ocupados:
+                    numero_disponivel = i
+                    break
+
+            if numero_disponivel is None:
+                msgbox.showwarning("Leitos ocupados", "Todos os leitos estão ocupados.")
+                return
+
+            # Dados da internação
+            medico_id = 1  # Simulação
+            data_entrada = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Inserir internação
+            self.gerenciador_leitos.inserir(
+                numero_leito=numero_disponivel,
+                id_paciente=paciente_id,
+                id_medico_encaminhou=medico_id,
+                data_entrada=data_entrada
+            )
+
+            msgbox.showinfo("Internação", f"Paciente internado no leito {numero_disponivel}.")
+            print(f"Paciente ID {paciente_id} internado no leito {numero_disponivel}.")
+
+        except Exception as e:
+            print(f"Erro ao internar paciente: {e}")
+            msgbox.showerror("Erro", f"Erro ao internar paciente: {e}")
+            
     def dar_alta(self):
         try:
             # Obter o ID correto do paciente
@@ -126,7 +230,19 @@ class TelaMedico(ctk.CTkFrame):
             # Remover da fila de atendimento médico (tipo_fila = 1)
             self.gerenciador_fila.remover_paciente_fila(paciente_id, tipo_fila=1)
             print("Paciente removido da fila de atendimento médico.")
-
+            # Atualizar leito do paciente (liberar leito)
+            try:
+                leitos_ativos = self.gerenciador_leitos.consultar({"id_paciente": paciente_id})
+                for leito in leitos_ativos:
+                    if not leito["data_saida"] or leito["data_saida"] in ("None", ""):
+                        self.gerenciador_leitos.atualizar(
+                            id_leito=leito["id"],
+                            novos_dados={"data_saida": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+                        )
+                        print(f"Leito ID {leito['id']} liberado.")
+                        break
+            except Exception as e:
+                print(f"Erro ao liberar leito: {e}")
             msgbox.showinfo("Alta concluída", "Paciente recebeu alta com sucesso e foi removido da fila.")
             self.master.master.mostrar_fila()  # Voltar para a tela de fila atualizada
 
@@ -246,7 +362,7 @@ class TelaPrincipal(ctk.CTkFrame):
         btn_relatorios.pack(padx=10, pady=5, fill="x")
         btn_relatorios.bind("<Button-1>", self.mostrar_relatorio)
 
-        ctk.CTkButton(self.sidebar, text="Logout", fg_color="black", anchor="w", command=self.quit).pack(side="bottom", padx=10, pady=20, fill="x")
+        ctk.CTkButton(self.sidebar, text="Log out", fg_color="black", anchor="w", command=self.quit).pack(side="bottom", padx=10, pady=20, fill="x")
 
         self.area_principal = ctk.CTkFrame(self, fg_color="white")
         self.area_principal.pack(side="left", fill="both", expand=True)
@@ -268,11 +384,19 @@ class TelaPrincipal(ctk.CTkFrame):
     def mostrar_leitos(self):
         self.limpar_area_principal()
 
-        def abrir_atendimento():
-            self.mostrar_atendimento()
+        def abrir_atendimento(paciente):
+            self.mostrar_atendimento(paciente)
 
-        tela = TelaLeitos(self.area_principal, abrir_atendimento_callback=abrir_atendimento)
+        gerenciador = GerenciadorLeitos()
+
+        tela = TelaLeitos(
+            master=self.area_principal,
+            gerenciador_leitos=gerenciador,
+            abrir_atendimento_callback=abrir_atendimento
+        )
         tela.pack(fill="both", expand=True)
+
+
 
 
 

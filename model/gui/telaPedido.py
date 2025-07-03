@@ -20,6 +20,15 @@ class TelaPedidos(ctk.CTkFrame):
         self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
         self.atualizar_lista_pedidos()
+    def mostrar_popup_sucesso(self, mensagem):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Confirmação")
+        popup.geometry("300x120")
+        popup.transient(self)  # Garante que fique sobre a janela principal
+        popup.grab_set()       # Janela modal
+
+        ctk.CTkLabel(popup, text=mensagem, font=("Arial", 14)).pack(pady=20)
+        ctk.CTkButton(popup, text="OK", command=popup.destroy).pack(pady=5)
 
     def atualizar_lista_pedidos(self):
         # Limpar antigos widgets
@@ -58,6 +67,8 @@ class TelaPedidos(ctk.CTkFrame):
             print(f"✔ Pedido {pedido_id} confirmado.")
 
             # Remover o card visualmente
+            self.mostrar_popup_sucesso("Pedido confirmado com sucesso!")
+
             card = self.cards_widgets.pop(pedido_id, None)
             if card:
                 card.destroy()
