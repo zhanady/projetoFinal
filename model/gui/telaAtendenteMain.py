@@ -1,7 +1,7 @@
 import customtkinter as ctk
-from projetoFinal.model.gui.telaChat import ChatScreen
-from projetoFinal.model.gui.telaRelatorios import MenuRelatorios
-from projetoFinal.model.banco.GerenciadorPacientes import GerenciadorPacientes
+from gui.telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from banco.GerenciadorPacientes import GerenciadorPacientes
 
 class AppAtendente(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -90,6 +90,9 @@ class AppAtendente(ctk.CTkFrame):
             sexo = self.entries[5].get()
             tipo_sang = self.entries_right[0].get()
             endereco = self.entries_right[1].get()
+            escala_dor = self.entries_right[2].get()
+            escala_glascow = self.entries_right[3].get()
+            sinais_vitais = self.entries_right[4].get()
             #status = self.entries_right[2].get()
 
             print("Nome:", nome)
@@ -103,13 +106,13 @@ class AppAtendente(ctk.CTkFrame):
             #print("Status:", status)
 
 
-            if not nome or not cpf:
-                print("⚠ Nome e CPF são obrigatórios.")
+            if not nome or not cpf or not escala_dor or not escala_glascow or not sinais_vitais:
+                print("⚠ Nome, CPF, a escala de dor, Glascow e sinais vitais são obrigatórios.")
                 return
 
             id_paciente = self.gerenciador.cadastrar_ou_reativar(
                 nome, cpf, telefone, email, data_nasc, sexo,
-                tipo_sang, endereco
+                tipo_sang, endereco, escala_dor, escala_glascow, sinais_vitais
             )
             print(f"✔ Paciente cadastrado com ID {id_paciente}")
             self.mostrar_popup_sucesso("Paciente cadastrado com sucesso!")

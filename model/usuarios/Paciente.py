@@ -1,6 +1,6 @@
 import inspect
 
-from projetoFinal.model.usuarios.Usuario import Usuario
+from usuarios.Usuario import Usuario
 
 
 class Paciente(Usuario):
@@ -8,8 +8,8 @@ class Paciente(Usuario):
     def get_builder():
         return PacienteBuilder()
 
-    def __init__(self, login, senha, categoria, cpf, nome, idade, sexo, tipo_sang, peso,
-                 contato_emg, triagem, historico):
+    def __init__(self, login, senha, categoria, cpf, nome, idade, sexo, tipo_sang,
+                 contato_emg, triagem, historico, id):
         super().__init__(login, senha, categoria)
         self.cpf = cpf
         self.nome = nome
@@ -17,10 +17,11 @@ class Paciente(Usuario):
         self.idade = idade
         self.sexo = sexo
         self.tipo_sang = tipo_sang
-        self.peso = peso
         self.contato_emg = contato_emg
         self.triagem = triagem
         self.historico = historico
+
+        self.id = id
 
     # Cadastrar aonde? Na fila ou no sistema de usuários?
     def cadastrar(self):
@@ -41,9 +42,6 @@ class Paciente(Usuario):
         if tipo_sang is not None:
             self.tipo_sang = tipo_sang
 
-        if peso is not None:
-            self.peso = peso
-
         if contato_emg is not None:
             self.contato_emg = contato_emg
 
@@ -62,6 +60,9 @@ class Paciente(Usuario):
     def get_cpf(self):
         return self.cpf
 
+    def get_id(self):
+        return self.id
+
     def get_nome(self):
         return self.nome
 
@@ -73,9 +74,6 @@ class Paciente(Usuario):
 
     def get_tipo_sang(self):
         return self.tipo_sang
-
-    def get_peso(self):
-        return self.peso
 
     def get_contato_emg(self):
         return self.contato_emg
@@ -99,19 +97,20 @@ class PacienteBuilder:
         self.categoria = 0
         self.nome = ""
         self.cpf = ""
-        self.idade = 0
+        self.idade = ""
         self.sexo = 'M'
         self.tipo_sang = None
         self.peso = None
-        self.contato_emg = ""
+        self.contato_emg = []
         self.gravidade = None
         self.historico = []
+        self.id = 0
 
     def build(self):
         return Paciente(self.login, self.senha, self.categoria,
-                        self.cpf, self.nome, self.idade, self.sexo, self.tipo_sang, self.peso, self.contato_emg,
+                        self.cpf, self.nome, self.idade, self.sexo, self.tipo_sang, self.contato_emg,
                         self.gravidade,
-                        self.historico)
+                        self.historico, self.id)
 
     def set_nome(self, nome):
         self.nome = nome
@@ -139,10 +138,6 @@ class PacienteBuilder:
 
     def set_tipo_sang(self, tipo_sang):
         self.tipo_sang = tipo_sang
-        return self.tipo_sang
-
-    def set_peso(self, peso):
-        self.peso = peso
         return self
 
     def set_contato_emg(self, contato_emg):
@@ -155,6 +150,10 @@ class PacienteBuilder:
 
     def set_cpf(self, cpf):
         self.cpf = cpf
+        return self
+
+    def set_id(self, id):
+        self.id = id
         return self
 
     def set_historico(self, historico):

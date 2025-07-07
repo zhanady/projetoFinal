@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from projetoFinal.model.banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia
+from banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia
 
 
 class TelaSolicitarMedicamento(ctk.CTkToplevel):

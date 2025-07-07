@@ -1,21 +1,22 @@
 import customtkinter as ctk
-from projetoFinal.model.gui.telaFila import TelaFila
-from projetoFinal.model.gui.telaChat import ChatScreen
-from projetoFinal.model.gui.telaRelatorios import MenuRelatorios
-from projetoFinal.model.gui.telaSolicitarRemedios import TelaSolicitarMedicamento
-from projetoFinal.model.gui.telaLeitos import TelaLeitos
-from projetoFinal.model.banco.GerenciadorPacientes import GerenciadorPacientes
-from projetoFinal.model.banco.GerenciadorFila import GerenciadorFila
+from gui.telaFila import TelaFila
+from gui.telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from gui.telaSolicitarRemedios import TelaSolicitarMedicamento
+from gui.telaLeitos import TelaLeitos
+from banco.GerenciadorPacientes import GerenciadorPacientes
+from banco.GerenciadorFila import GerenciadorFila
 import tkinter.messagebox as msgbox
 from banco.GerenciadorLeitos import GerenciadorLeitos
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from projetoFinal.model.sistemaemergencial.Triagem import Triagem
 
 
 class TelaMedico(ctk.CTkFrame):
     def __init__(self, master, paciente, **kwargs):
         super().__init__(master, fg_color="white", **kwargs)
-        self.paciente = paciente
+        self.paciente = paciente  # Dicionario com atributos do paciente
         self.chat_screen = None
         self.gerenciador = GerenciadorPacientes()
         self.relatorio_menu = MenuRelatorios(self)
@@ -77,7 +78,9 @@ class TelaMedico(ctk.CTkFrame):
         historico_frame = ctk.CTkFrame(top_frame, fg_color="white", border_width=1, corner_radius=8)
         historico_frame.pack(side="left", fill="both", expand=True, padx=(5, 10), pady=10)
 
-        ctk.CTkLabel(historico_frame, text="Histórico do Paciente", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(10, 5))
+        ctk.CTkLabel(historico_frame, text="Histórico do Paciente", font=("Arial", 14, "bold")).pack(anchor="w",
+                                                                                                     padx=10,
+                                                                                                     pady=(10, 5))
         historico = self.gerenciador.obter_historico_paciente(self.paciente["id"])
         if historico:
             for item in historico:
@@ -90,10 +93,45 @@ class TelaMedico(ctk.CTkFrame):
         diagnostico_frame = ctk.CTkFrame(content_frame, fg_color="#FAFAFA", corner_radius=8)
         diagnostico_frame.pack(fill="x", padx=10, pady=(0, 10))
 
-        ctk.CTkLabel(diagnostico_frame, text="Possível diagnóstico", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(10, 0))
+        ctk.CTkLabel(diagnostico_frame, text="Possível diagnóstico", font=("Arial", 14, "bold")).pack(anchor="w",
+                                                                                                      padx=10,
+                                                                                                      pady=(10, 0))
         ctk.CTkLabel(diagnostico_frame, text="Descrição").pack(anchor="w", padx=10, pady=(5, 0))
         self.entrada_diagnostico = ctk.CTkEntry(diagnostico_frame, width=300)
         self.entrada_diagnostico.pack(anchor="w", padx=10)
+
+        # Label triagem
+        texto_triagem = "Triagem: "
+        valor_triagem = self.gerenciador.get_triagem(self.paciente["id"])
+
+        if valor_triagem == Triagem.VERMELHA:
+            texto_triagem += "Vermelha"
+        elif valor_triagem == Triagem.LARANJA:
+            texto_triagem += "Laranja"
+        elif valor_triagem == Triagem.AMARELA:
+            texto_triagem += "Amarela"
+        elif valor_triagem == Triagem.VERDE:
+            texto_triagem += "Verde"
+        else:
+            texto_triagem += "Azul"
+
+        ctk.CTkLabel(diagnostico_frame, text=texto_triagem).pack(anchor="w", padx=10, pady=(5, 0))
+
+        # Label tempo triagem
+        if self.gerenciador_leitos.isEmLeito(self.paciente["id"]):
+            leito = self.gerenciador_leitos.get_leito(self.paciente["id"])
+            data_saida = leito.get_data_saida()
+            data_atual = datetime.now()
+            periodo = data_saida - data_atual
+            horas = str(int(periodo.total_seconds() // 3600))
+            minutos = str(int(periodo.total_seconds() % 3600) // 60)
+            segundos = int(periodo.total_seconds() % 60)
+            if segundos < 10:
+                segundos = "0" + str(segundos)
+            else:
+                segundos = str(segundos)
+            ctk.CTkLabel(diagnostico_frame, text="Tempo estimado de saída: " + horas +
+                         ":" + minutos + ":" + segundos).pack(anchor="w", padx=10, pady=(5, 0))
 
         # Botões
         botoes_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
@@ -111,7 +149,6 @@ class TelaMedico(ctk.CTkFrame):
                     break
         except Exception as e:
             print(f"Erro ao verificar leito: {e}")
-
 
         # Botão Salvar
         ctk.CTkButton(
@@ -162,7 +199,7 @@ class TelaMedico(ctk.CTkFrame):
                 "id_paciente": paciente_id,
                 "data_saida": None
             })
-            if leitos_ativos:
+            if leitos_ativos or self.gerenciador_leitos.isEmLeito(paciente_id):
                 msgbox.showwarning("Já internado", "Este paciente já está em um leito.")
                 return
 
@@ -188,14 +225,34 @@ class TelaMedico(ctk.CTkFrame):
 
             # Dados da internação
             medico_id = 1  # Simulação
-            data_entrada = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data_entrada = datetime.now()
 
+            valor_triagem = self.gerenciador.get_triagem(paciente_id)
+
+            if valor_triagem == Triagem.VERMELHA:
+                data_saida = (data_entrada + timedelta(hours=3)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
+            elif valor_triagem == Triagem.LARANJA:
+                data_saida = (data_entrada + timedelta(hours=1, minutes=30)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
+            elif valor_triagem == Triagem.AMARELA:
+                data_saida = (data_entrada + timedelta(minutes=45)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
+            elif valor_triagem == Triagem.VERDE:
+                data_saida = (data_entrada + timedelta(minutes=25)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                data_saida = (data_entrada + timedelta(minutes=12)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
+
+            data_entrada = data_entrada.strftime("%Y-%m-%d %H:%M:%S")
             # Inserir internação
             self.gerenciador_leitos.inserir(
                 numero_leito=numero_disponivel,
                 id_paciente=paciente_id,
                 id_medico_encaminhou=medico_id,
-                data_entrada=data_entrada
+                data_entrada=data_entrada,
+                data_saida=data_saida
             )
 
             msgbox.showinfo("Internação", f"Paciente internado no leito {numero_disponivel}.")
@@ -204,7 +261,7 @@ class TelaMedico(ctk.CTkFrame):
         except Exception as e:
             print(f"Erro ao internar paciente: {e}")
             msgbox.showerror("Erro", f"Erro ao internar paciente: {e}")
-            
+
     def dar_alta(self):
         try:
             # Obter o ID correto do paciente
@@ -225,11 +282,15 @@ class TelaMedico(ctk.CTkFrame):
             self.gerenciador.atualizar(id_paciente=paciente_id, novos_dados={"status": "inativo"})
             print("Status do paciente atualizado para inativo.")
             self.gerenciador.finalizar_ultimo_atendimento(paciente_id)
-
+            self.gerenciador.limpar_triagens(paciente_id)
 
             # Remover da fila de atendimento médico (tipo_fila = 1)
             self.gerenciador_fila.remover_paciente_fila(paciente_id, tipo_fila=1)
+            self.gerenciador_fila.remover_paciente_fila(paciente_id, tipo_fila=0)
             print("Paciente removido da fila de atendimento médico.")
+
+            if self.gerenciador_leitos.isEmLeito(paciente_id):
+                self.gerenciador_leitos.remover_por_paciente(paciente_id)
             # Atualizar leito do paciente (liberar leito)
             try:
                 leitos_ativos = self.gerenciador_leitos.consultar({"id_paciente": paciente_id})
@@ -250,13 +311,11 @@ class TelaMedico(ctk.CTkFrame):
             print(f"Erro ao dar alta: {e}")
             msgbox.showerror("Erro", f"Erro ao dar alta: {e}")
 
-
-
     def salvar_dados(self):
         paciente_id = self.paciente.get("id")
-       
+
         print(f"Tentando mover paciente ID {self.paciente['id']} para a fila de atendimento médico")
-        
+
         if not self.gerenciador.paciente_existe(self.paciente["id"]):
             print(f"Erro: paciente ID {self.paciente['id']} não existe no banco!")
             return
@@ -271,7 +330,6 @@ class TelaMedico(ctk.CTkFrame):
             print(f"Paciente ID {paciente_id} não encontrado no banco.")
             msgbox.showerror("Erro", f"Paciente ID {paciente_id} não encontrado no banco.")
             return
-
 
         # Atualizar dados do paciente
         dados_atualizados = {campo: entry.get() for campo, entry in self.entries.items()}
@@ -308,7 +366,6 @@ class TelaMedico(ctk.CTkFrame):
             self.gerenciador_fila.remover_paciente_fila(id_paciente, tipo_fila=0)
             self.gerenciador_fila.adicionar_paciente_fila(id_paciente, tipo_fila=1, prioridade=3)
 
-
             # Pop-up de confirmação
             msgbox.showinfo(
                 title="Atendimento salvo",
@@ -320,7 +377,6 @@ class TelaMedico(ctk.CTkFrame):
         except Exception as e:
             print(f"Erro ao registrar atendimento ou mover de fila: {e}")
             msgbox.showerror("Erro", f"Ocorreu um erro: {e}")
-
 
     def mostrar_chat(self):
         self.limpar_area_principal()
@@ -352,17 +408,25 @@ class TelaPrincipal(ctk.CTkFrame):
 
         ctk.CTkLabel(self.sidebar, text="My Account", font=("Arial", 16)).pack(pady=(20, 10))
 
-        ctk.CTkButton(self.sidebar, text="Fila", fg_color="black", anchor="w", command=self.mostrar_fila).pack(padx=10, pady=5, fill="x")
-        #ctk.CTkButton(self.sidebar, text="Atendimento", fg_color="black", anchor="w", command=self.mostrar_atendimento).pack(padx=10, pady=5, fill="x")
-        ctk.CTkButton(self.sidebar, text="Chat", fg_color="black", anchor="w", command=self.mostrar_chat).pack(padx=10, pady=5, fill="x")
-        self.btn_leitos = ctk.CTkButton(self.sidebar, anchor="w", text="Leitos", fg_color="black", command=self.mostrar_leitos )
+        ctk.CTkButton(self.sidebar, text="Fila", fg_color="black", anchor="w", command=self.mostrar_fila).pack(padx=10,
+                                                                                                               pady=5,
+                                                                                                               fill="x")
+        # ctk.CTkButton(self.sidebar, text="Atendimento", fg_color="black", anchor="w", command=self.mostrar_atendimento).pack(padx=10, pady=5, fill="x")
+        ctk.CTkButton(self.sidebar, text="Chat", fg_color="black", anchor="w", command=self.mostrar_chat).pack(padx=10,
+                                                                                                               pady=5,
+                                                                                                               fill="x")
+        self.btn_leitos = ctk.CTkButton(self.sidebar, anchor="w", text="Leitos", fg_color="black",
+                                        command=self.mostrar_leitos)
         self.btn_leitos.pack(padx=10, pady=5, fill="x")
 
         btn_relatorios = ctk.CTkButton(self.sidebar, text="Relatórios", fg_color="black", anchor="w")
         btn_relatorios.pack(padx=10, pady=5, fill="x")
         btn_relatorios.bind("<Button-1>", self.mostrar_relatorio)
 
-        ctk.CTkButton(self.sidebar, text="Log out", fg_color="black", anchor="w", command=self.quit).pack(side="bottom", padx=10, pady=20, fill="x")
+        ctk.CTkButton(self.sidebar, text="Log out", fg_color="black", anchor="w", command=self.quit).pack(side="bottom",
+                                                                                                          padx=10,
+                                                                                                          pady=20,
+                                                                                                          fill="x")
 
         self.area_principal = ctk.CTkFrame(self, fg_color="white")
         self.area_principal.pack(side="left", fill="both", expand=True)
@@ -380,7 +444,7 @@ class TelaPrincipal(ctk.CTkFrame):
         self.limpar_area_principal()
         tela = TelaFila(self.area_principal, abrir_atendimento_callback=self.mostrar_atendimento)
         tela.pack(fill="both", expand=True)
-    
+
     def mostrar_leitos(self):
         self.limpar_area_principal()
 
@@ -395,10 +459,6 @@ class TelaPrincipal(ctk.CTkFrame):
             abrir_atendimento_callback=abrir_atendimento
         )
         tela.pack(fill="both", expand=True)
-
-
-
-
 
     def mostrar_atendimento(self, paciente):
         self.limpar_area_principal()

@@ -1,7 +1,7 @@
 import customtkinter as ctk
-from projetoFinal.model.gui.telaRelatorios import MenuRelatorios
-from projetoFinal.model.gui.telaEstoque import TelaEstoque
-from projetoFinal.model.gui.telaChat import ChatScreen
+from gui.telaRelatorios import MenuRelatorios
+from gui.telaEstoque import TelaEstoque
+from gui.telaChat import ChatScreen
 
 from projetoFinal.model.gui.telaPedido import TelaPedidos  # ← nova importação
 

@@ -1,5 +1,9 @@
+import datetime
 import sqlite3
 from typing import Optional, List, Dict, Any
+from datetime import datetime
+
+from sistemaemergencial.Leitos import Leitos
 
 
 class GerenciadorLeitos:
@@ -26,7 +30,8 @@ class GerenciadorLeitos:
 
             conn.commit()
 
-    def inserir(self, numero_leito: int, id_paciente: int, id_medico_encaminhou: int, data_entrada: str, data_saida: Optional[str] = None):
+    def inserir(self, numero_leito: int, id_paciente: int, id_medico_encaminhou: int, data_entrada: str,
+                data_saida: Optional[str] = None):
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -36,7 +41,6 @@ class GerenciadorLeitos:
             conn.commit()
             print(f"Leito inserido com sucesso! ID: {cursor.lastrowid}")
             return cursor.lastrowid
-
 
     def consultar(self, filtros: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         with self._conectar() as conn:
@@ -58,7 +62,6 @@ class GerenciadorLeitos:
             colunas = [col[0] for col in cursor.description]
             resultados = cursor.fetchall()
             return [dict(zip(colunas, linha)) for linha in resultados]
-
 
     def atualizar(self, id_leito: int, novos_dados: Dict[str, Any]):
         if not novos_dados:
@@ -83,7 +86,6 @@ class GerenciadorLeitos:
             except Exception as e:
                 print(f"❌ Erro ao atualizar leito: {e}")
 
-
     def remover(self, id_leito: int):
         with self._conectar() as conn:
             cursor = conn.cursor()
@@ -97,23 +99,55 @@ class GerenciadorLeitos:
             except Exception as e:
                 print(f"❌ Erro ao remover leito: {e}")
 
+    def remover_por_paciente(self, paciente_id: int):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("DELETE FROM leitos WHERE id_paciente = ?",
+                               (paciente_id,))
+                conn.commit()
+            except Exception as e:
+                print(f"❌ Erro ao remover leito: {e}")
 
-'''
-# Instanciar a classe
-leito = GerenciadorLeitos()
+    def isEmLeito(self, paciente_id):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM leitos WHERE id_paciente = ?
+            ''', (paciente_id,))
+            return cursor.fetchone() is not None
 
-# Inserir um novo leito
-leito_id = leito.inserir(id_paciente=1, id_medico_encaminhou=2, data_entrada="2025-06-12")
+    def isLeitosCheios(self):
+        return 8 <= len(self.consultar())
 
-# Consultar todos
-print(leito.consultar())
+    def get_leito(self, paciente_id):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT numero_leito, id_paciente, id_medico_encaminhou, data_entrada, data_saida  
+                FROM leitos WHERE id_paciente = ?
+            ''', (paciente_id,))
+            numero_leito, id_paciente, id_medico_encaminhou, data_entrada, data_saida = cursor.fetchone()
+            return Leitos(numero_leito, id_paciente, id_medico_encaminhou,
+                          datetime.strptime(data_entrada, "%Y-%m-%d %H:%M:%S"),
+                          datetime.strptime(data_saida, "%Y-%m-%d %H:%M:%S"))
 
-# Consultar com filtro
-print(leito.consultar({'id_paciente': 1}))
 
-# Atualizar dados
-leito.atualizar(leito_id, {'data_saida': '2025-06-15'})
+if __name__ == "__main__":
+    # Instanciar a classe
+    leito = GerenciadorLeitos()
 
-# Remover leito
-leito.remover(leito_id)
-'''
+    # Inserir um novo leito
+    leito_id = leito.inserir(id_paciente=1, id_medico_encaminhou=2, data_entrada="2025-06-12")
+
+    # Consultar todos
+    print(leito.consultar())
+
+    # Consultar com filtro
+    print(leito.consultar({'id_paciente': 1}))
+
+    # Atualizar dados
+    leito.atualizar(leito_id, {'data_saida': '2025-06-15'})
+
+    # Remover leito
+    leito.remover(leito_id)

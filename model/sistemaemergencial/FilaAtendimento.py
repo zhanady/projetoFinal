@@ -1,5 +1,8 @@
 # pelo que foi definido, acredito que Fila deve seguir um padrão singleton,
 # isto é, existir uma única instância no programa inteiro
+# Nota: devido ao comportamento de resgate de dados do DB, as filas não serão mais
+# singleton. Não retirarei o método "get_instancia" para não quebrar o que eu fiz
+# até agora
 
 import datetime
 
@@ -10,9 +13,10 @@ class FilaAtendimento:
 
     @staticmethod
     def get_instancia():
-        if FilaAtendimento.INSTANCIA is None:
-            FilaAtendimento.INSTANCIA = FilaAtendimento()
-        return FilaAtendimento.INSTANCIA
+        return FilaAtendimento()
+        # if FilaAtendimento.INSTANCIA is None:
+        #     FilaAtendimento.INSTANCIA = FilaAtendimento()
+        # return FilaAtendimento.INSTANCIA
 
     def __init__(self):
         self.pacientes = []
@@ -24,9 +28,23 @@ class FilaAtendimento:
     def get_lista_espera(self):
         return dict(self.lista_espera)
 
+    def adicionar_paciente_e_horario(self, paciente, horario):
+        for p in self.pacientes:
+            if p.get_cpf() == paciente.get_cpf():
+                self.pacientes.remove(p)
+                break
+
+        horario_entrada = horario
+        self.pacientes.append(paciente)
+        self.lista_espera[paciente] = horario_entrada
+
+        self.ordernar_fila()
+
     def adicionar_paciente(self, paciente):
-        if paciente in self.pacientes:
-            return
+        for p in self.pacientes:
+            if p.get_cpf() == paciente.get_cpf():
+                self.pacientes.remove(p)
+                break
 
         horario_entrada = datetime.datetime.now()
         self.pacientes.append(paciente)
@@ -47,7 +65,7 @@ class FilaAtendimento:
             pulseiras_azuis = 0, 0, 0, 0, 0
 
         def logica_ordenacao_triagem(paciente):
-            from Triagem import Triagem
+            from sistemaemergencial.Triagem import Triagem
             gravidade = paciente.get_triagem().get_cor_pulseira()
             if gravidade == Triagem.VERMELHA:
                 nonlocal pulseiras_vermelhas

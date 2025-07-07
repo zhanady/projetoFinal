@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from projetoFinal.model.banco.GerenciadorFarmacias import GerenciadorFarmacia
+from banco.GerenciadorFarmacias import GerenciadorFarmacia
 
 class TelaEstoque(ctk.CTkFrame):
     def __init__(self, master, **kwargs):

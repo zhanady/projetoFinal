@@ -1,13 +1,15 @@
+import datetime
 import sqlite3
 from typing import Optional, Dict, Any, List
-from projetoFinal.model.banco.GerenciadorFila import *
+from banco.GerenciadorFila import *
+from datetime import datetime, timedelta
+
 
 class GerenciadorPacientes:
     def __init__(self, db_name: str = '../hospital.db'):
         self.db_name = db_name
         self._criar_tabelas()
         self.gerenciadorFila = GerenciadorFila()
-
 
     def _conectar(self):
         return sqlite3.connect(self.db_name)
@@ -20,16 +22,6 @@ class GerenciadorPacientes:
         """
         with self._conectar() as conn:
             cursor = conn.cursor()
-
-
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS triagem (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    escala_dor INTEGER NOT NULL,
-                    escala_glascow INTEGER NOT NULL
-                    sinais_vitais INTEGER NOT NULL
-                );
-            ''')
 
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS pacientes (
@@ -45,6 +37,19 @@ class GerenciadorPacientes:
                     status TEXT NOT NULL DEFAULT 'ativo'
                 );
             ''')
+
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS triagens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    paciente_id INTEGER,
+                    escala_dor INTEGER NOT NULL,
+                    escala_glascow INTEGER NOT NULL,
+                    sinais_vitais INTEGER NOT NULL,
+                    CONSTRAINT triagemPaciente FOREIGN KEY (paciente_id) 
+                    REFERENCES pacientes (id)
+                );
+            ''')
+
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS historico_atendimentos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +71,9 @@ class GerenciadorPacientes:
             cursor.execute("SELECT id FROM pacientes WHERE id = ?", (id_paciente,))
             return cursor.fetchone() is not None
 
-    def cadastrar_ou_reativar(self, nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco):
+    def cadastrar_ou_reativar(self, nome, cpf, telefone, email, data_nascimento, sexo
+                              , tipo_sanguineo, endereco, escala_dor, escala_glascow, sinais_vitais
+                              ):
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id, status FROM pacientes WHERE cpf = ?", (cpf,))
@@ -75,38 +82,65 @@ class GerenciadorPacientes:
             if resultado:
                 paciente_id, status_atual = resultado
                 # Se já existe e está inativo, reativar
+                # Ativo: está em fila ou leito
+                # Inativo: não está em nenhum lugar
                 if status_atual.lower() == "inativo":
                     cursor.execute("UPDATE pacientes SET status = 'ativo' WHERE id = ?", (paciente_id,))
-                    conn.commit()
-                    print(f"Paciente com CPF {cpf} reativado.")
-                    self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
 
+                    cursor.execute('''
+                        INSERT INTO triagens (paciente_id, escala_dor, escala_glascow, sinais_vitais) 
+                        VALUES (?, ?, ?, ?)
+                    ''', (paciente_id, escala_dor, escala_glascow, sinais_vitais))
+                    conn.commit()
+
+                    print(f"Paciente com CPF {cpf} reativado.")
+
+                    if not self.verificar_triagem_vermelha(paciente_id, escala_dor,
+                                                           escala_glascow, sinais_vitais):
+                        self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
                 else:
                     print(f"Paciente com CPF {cpf} já está ativo.")
-                    #self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
+
+                    # Se já está ativo, não há necessidade de atualizar a triagem
+                    # self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
 
                 return paciente_id
 
             # Caso não exista, criar novo
+            # Cria paciente
             cursor.execute('''
                 INSERT INTO pacientes (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ativo')
-            ''', (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco))
+            ''', (nome, cpf, telefone, email, data_nascimento, sexo,
+                  tipo_sanguineo, endereco))
+
+            # Resgata ID de paciente para criar triagem
+            cursor.execute('''
+                SELECT id FROM pacientes where cpf = ?
+            ''', (cpf,))
+
+            id = cursor.fetchone()[0]
+            # Cria triagem
+            cursor.execute('''
+                INSERT INTO triagens (paciente_id, escala_dor, escala_glascow, sinais_vitais) 
+                VALUES (?, ?, ?, ?)
+            ''', (id, escala_dor, escala_glascow, sinais_vitais))
+
             conn.commit()
             novo_id = cursor.lastrowid
             print(f"Novo paciente criado com ID {novo_id}.")
 
-            # Adiciona à fila
-            if self.gerenciadorFila:
-                try:
-                    self.gerenciadorFila.adicionar_paciente_fila(id_paciente=novo_id, tipo_fila=0, prioridade=3)
-                    print("Paciente adicionado à fila.")
-                except Exception as e:
-                    print(f"Erro ao adicionar novo paciente à fila: {e}")
+            if not self.verificar_triagem_vermelha(novo_id, escala_dor,
+                                                   escala_glascow, sinais_vitais):
+                # Adiciona à fila
+                if self.gerenciadorFila:
+                    try:
+                        self.gerenciadorFila.adicionar_paciente_fila(id_paciente=novo_id, tipo_fila=0, prioridade=3)
+                        print("Paciente adicionado à fila.")
+                    except Exception as e:
+                        print(f"Erro ao adicionar novo paciente à fila: {e}")
 
             return novo_id
-
-
 
         # Verifica se o paciente de fato está no banco
         teste = self.consultar(filtros={"id": id_paciente})
@@ -120,6 +154,7 @@ class GerenciadorPacientes:
                 return None
 
         return id_paciente
+
     def finalizar_ultimo_atendimento(self, paciente_id: int):
         with self._conectar() as conn:
             cursor = conn.cursor()
@@ -143,7 +178,8 @@ class GerenciadorPacientes:
             else:
                 print("Nenhum atendimento encontrado para finalizar.")
 
-    def registrar_atendimento(self, paciente_id: int, sintomas: str, descricao: str, diagnostico: str, status: str = "pendente", usuario_id: Optional[int] = None):
+    def registrar_atendimento(self, paciente_id: int, sintomas: str, descricao: str, diagnostico: str,
+                              status: str = "pendente", usuario_id: Optional[int] = None):
         if not diagnostico or diagnostico.strip() == "":
             print("Diagnóstico não pode estar vazio.")
             return
@@ -160,6 +196,13 @@ class GerenciadorPacientes:
                     INSERT INTO historico_atendimentos (paciente_id, usuario_id, data, sintomas, descricao, diagnostico, status)
                     VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
                 ''', (paciente_id, usuario_id, sintomas, descricao, diagnostico, status))
+                cursor.execute(''' 
+                    DELETE FROM fila WHERE id_paciente = ?
+                ''', (paciente_id,))
+                cursor.execute('''
+                    INSERT INTO fila (id_paciente, tipo_fila) 
+                    VALUES (?, ?)
+                ''', (paciente_id, 1))
                 conn.commit()
                 print("Atendimento registrado com sucesso!")
             except sqlite3.IntegrityError as e:
@@ -225,3 +268,72 @@ class GerenciadorPacientes:
                 WHERE id = ?
             ''', (id_paciente,))
             conn.commit()
+
+    def get_paciente(self, id):
+        with (self._conectar() as conn):
+            paciente_builder = PacienteBuilder()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT nome, cpf, telefone, email, data_nascimento,
+                sexo, tipo_sanguineo, endereco WHERE id=?
+            ''', (id,))
+            nome, cpf, telefone, email, data_nascimento, sexo, \
+                tipo_sanguineo, endereco = cursor.fetchone()
+            return paciente_builder.set_nome(nome) \
+                .set_cpf(cpf) \
+                .set_contato_emg([telefone, email]) \
+                .set_idade(data_nascimento) \
+                .set_sexo(sexo) \
+                .set_tipo_sang(tipo_sanguineo) \
+                .build()
+
+    def get_triagem(self, id):
+        with (self._conectar() as conn):
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT escala_dor, escala_glascow, sinais_vitais
+                FROM triagens WHERE paciente_id=?
+            ''', (id,))
+            escala_dor, escala_glascow, sinais_vitais = cursor.fetchone()
+            triagem = Triagem(None, int(escala_dor), int(escala_glascow), int(sinais_vitais))
+            triagem.definir_prioridade()
+            return triagem.get_cor_pulseira()
+
+    def limpar_triagens(self, paciente_id):
+        with (self._conectar() as conn):
+            cursor = conn.cursor()
+            cursor.execute('''
+                DELETE FROM triagens WHERE paciente_id = ?
+            ''', (paciente_id,))
+
+    # retorna true se a triagem for vermelha E for possível por o paciente em
+    # um leito
+    def verificar_triagem_vermelha(self, paciente_id, escala_dor, escala_glascow, sinais_vitais):
+        triagem = Triagem(None, int(escala_dor), int(escala_glascow), int(sinais_vitais))
+        triagem.definir_prioridade()
+        if triagem.get_cor_pulseira() == Triagem.VERMELHA:
+            gerenciador_leitos = GerenciadorLeitos()
+
+            todos_leitos = gerenciador_leitos.consultar()
+            ocupados = {
+                l["numero_leito"]
+                for l in todos_leitos
+                if not l["data_saida"] and l["numero_leito"] is not None
+            }
+
+            total_leitos = 8  # pode ser dinâmico
+            numero_disponivel = None
+            for i in range(1, total_leitos + 1):
+                if i not in ocupados:
+                    numero_disponivel = i
+                    break
+
+            if numero_disponivel is None:
+                return False
+
+            data_entrada = datetime.now()
+            gerenciador_leitos.inserir(numero_disponivel, paciente_id, 1,
+                                       data_entrada.strftime("%Y-%m-%d %H:%M:%S"),
+                                       (data_entrada + timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"))
+            return True
+        return False

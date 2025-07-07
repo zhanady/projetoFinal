@@ -1,5 +1,5 @@
-from projetoFinal.model.sistemaemergencial.FilaAtendimento import FilaAtendimento
-from projetoFinal.model.usuarios.Paciente import PacienteBuilder
+from sistemaemergencial.FilaAtendimento import FilaAtendimento
+from usuarios.Paciente import PacienteBuilder
 
 
 class Triagem:
@@ -7,8 +7,8 @@ class Triagem:
     VERMELHA = 0
     LARANJA = 1
     AMARELA = 2
-    VERDE = 4
-    AZUL = 5
+    VERDE = 3
+    AZUL = 4
     FILA = FilaAtendimento.get_instancia()
 
     def __init__(self, paciente, escala_dor#, escala_sang
@@ -18,7 +18,7 @@ class Triagem:
         # self.escala_sang = escala_sang
         self.escala_glascow = escala_glascow
         self.sinais_vitais = sinais_vitais
-        self.cor_pulseira = 5
+        self.cor_pulseira = 4
 
     @staticmethod
     def emergencia(paciente=None):
@@ -100,7 +100,7 @@ class Triagem:
         elif self.escala_dor > 6:
             ponto_escala_dor = 0
 
-        cor_pulseira = ponto_sinais_vitais + ponto_escala_glascow + ponto_escala_dor + 2
+        cor_pulseira = ponto_sinais_vitais + ponto_escala_glascow + ponto_escala_dor + 1
         if cor_pulseira < 0:
             cor_pulseira = 0
         self.cor_pulseira = cor_pulseira

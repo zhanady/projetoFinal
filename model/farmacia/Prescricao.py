@@ -1,4 +1,4 @@
-from project.model.farmacia.Farmacia import Farmacia
+from farmacia.Farmacia import Farmacia
 
 
 class Prescricao:

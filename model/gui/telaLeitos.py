@@ -89,7 +89,8 @@ class TelaLeitos(ctk.CTkFrame):
         for i in range(total_leitos):
             if i < len(leitos_bd):
                 leito = leitos_bd[i]
-                ocupado = not leito["data_saida"]  # True se data_saida for None, "" ou False
+                # ocupado = not leito["data_saida"]  # True se data_saida for None, "" ou False
+                ocupado = leito["data_saida"]  # True se data_saida for None, "" ou False
                 nome_paciente = ""
                 paciente_id = None
 

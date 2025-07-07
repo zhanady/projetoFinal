@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from projetoFinal.model.banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia  # ajuste o caminho conforme seu projeto
+from banco.GerenciadorPedidosFarmacia import GerenciadorPedidosFarmacia  # ajuste o caminho conforme seu projeto
 
 class TelaPedidos(ctk.CTkFrame):
     def __init__(self, master, **kwargs):

@@ -1,8 +1,8 @@
 import customtkinter as ctk
 from PIL import Image
 import os
-from projetoFinal.model.banco.GerenciadorFila import GerenciadorFila
-from projetoFinal.model.banco.GerenciadorPacientes import *
+from banco.GerenciadorFila import GerenciadorFila
+from banco.GerenciadorPacientes import *
 
 
 class TelaFila(ctk.CTkFrame):
@@ -39,21 +39,23 @@ class TelaFila(ctk.CTkFrame):
             for widget in container.winfo_children():
                 widget.destroy()
 
-        pacientes_triagem = self.gerenciador_fila.buscar_fila(tipo_fila=0)
-        pacientes_atendimento = self.gerenciador_fila.buscar_fila(tipo_fila=1)
-        print(pacientes_triagem)
-        self._preencher_container(self.container_triagem, pacientes_triagem)
-        self._preencher_container(self.container_atendimento, pacientes_atendimento)
+        fila_triagem = self.gerenciador_fila.buscar_fila(tipo_fila=0)
+        fila_atendimento = self.gerenciador_fila.buscar_fila(tipo_fila=1)
+        self._preencher_container(self.container_triagem, fila_triagem)
+        self._preencher_container(self.container_atendimento, fila_atendimento)
 
-    def _preencher_container(self, container, pacientes):
+    def _preencher_container(self, container, fila):
         frame_linha = ctk.CTkFrame(container, fg_color="#F5F5F5")
         frame_linha.pack(pady=10, padx=10, anchor="w")
+        pacientes = fila.get_pacientes()
 
+        # pacientes: lista de instâncias de pacientes
         for paciente in pacientes:
             frame_paciente = ctk.CTkFrame(frame_linha, fg_color="white", corner_radius=8, width=100)
             frame_paciente.pack(side="left", padx=10, pady=5)
 
-            nome = paciente.get("nome", paciente['nome_paciente'])
+            # nome = paciente.get("nome", paciente['nome_paciente'])
+            nome = paciente.get_nome()
 
             ctk.CTkLabel(frame_paciente, image=self.avatar_img, text="").pack(pady=(10, 5))
             ctk.CTkButton(
@@ -68,13 +70,15 @@ class TelaFila(ctk.CTkFrame):
 
     def mostrar_atendimento(self, paciente):
         if self.abrir_atendimento_callback:
-            paciente_id = paciente.get("id") or paciente.get("id_paciente")
+            # paciente_id = paciente.get("id") or paciente.get("id_paciente")
+            paciente_id = paciente.get_id()
             if not paciente_id:
                 print(f"[ERRO] Paciente não tem ID válido: {paciente}")
                 return
 
             gerenciador = GerenciadorPacientes()
-            id_paciente = paciente.get("id_paciente") or paciente.get("id")
+            # id_paciente = paciente.get("id_paciente") or paciente.get("id")
+            id_paciente = paciente.get_id()
             paciente_completo = gerenciador.consultar(filtros={"id": id_paciente})
 
             if paciente_completo:

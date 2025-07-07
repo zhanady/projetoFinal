@@ -1,7 +1,7 @@
 import datetime
 import time
 
-from model.usuarios.Paciente import PacienteBuilder
+from usuarios.Paciente import PacienteBuilder
 
 
 # Fila de espera para a triagem. Fica nesta fila aqueles que não tem uma triagem definida
@@ -10,9 +10,10 @@ class FilaTriagem:
 
     @staticmethod
     def get_instancia():
-        if FilaTriagem.INSTANCIA is None:
-            FilaTriagem.INSTANCIA = FilaTriagem()
-        return FilaTriagem.INSTANCIA
+        return FilaTriagem()
+        # if FilaTriagem.INSTANCIA is None:
+        #     FilaTriagem.INSTANCIA = FilaTriagem()
+        # return FilaTriagem.INSTANCIA
 
     def __init__(self):
         self.pacientes = []
@@ -24,9 +25,28 @@ class FilaTriagem:
     def get_lista_espera(self):
         return dict(self.lista_espera)
 
+    def adicionar_paciente_e_horario(self, paciente, horario):
+        for p in self.pacientes:
+            if p.get_cpf() == paciente.get_cpf():
+                self.pacientes.remove(p)
+                break
+
+        horario_entrada = horario
+        self.pacientes.append(paciente)
+        self.lista_espera[paciente] = horario_entrada
+        def logica_ordenacao(p):
+            return self.lista_espera[p]
+
+        sorted(self.pacientes, key=logica_ordenacao)
+
+
+
+
     def adicionar_paciente(self, paciente):
-        if paciente in self.pacientes:
-            return
+        for p in self.pacientes:
+            if p.get_cpf() == paciente.get_cpf():
+                self.pacientes.remove(p)
+                break
 
         horario_entrada = datetime.datetime.now()
         self.pacientes.append(paciente)

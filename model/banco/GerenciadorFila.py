@@ -1,12 +1,19 @@
 import sqlite3
-from datetime import datetime
+import datetime
+
+from banco.GerenciadorLeitos import GerenciadorLeitos
+from sistemaemergencial.FilaAtendimento import FilaAtendimento
+from sistemaemergencial.FilaTriagem import FilaTriagem
+from sistemaemergencial.Triagem import Triagem
+from usuarios.Paciente import PacienteBuilder
+
 
 class GerenciadorFila:
     def __init__(self, db_name='../hospital.db'):
         """Inicializa a classe e cria as tabelas necessárias"""
         self.db_name = db_name
         self._criar_tabelas()
-    
+
     def _conectar(self):
         # Cria e retorna uma conexão com o banco de dados, ativando chaves estrangeiras
         conn = sqlite3.connect(self.db_name)
@@ -16,7 +23,7 @@ class GerenciadorFila:
         """Cria as tabelas relacionadas à fila hospitalar"""
         with self._conectar() as conn:
             cursor = conn.cursor()
-            
+
             # Tabela principal de controle da fila
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS fila (
@@ -77,11 +84,7 @@ class GerenciadorFila:
             cursor = conn.cursor()
 
             # Busca o primeiro registro da fila para esse paciente e tipo
-            cursor.execute('''
-                SELECT id FROM fila
-                WHERE id_paciente = ? AND tipo_fila = ?
-                ORDER BY data_entrada ASC
-            ''', (id_paciente, tipo_fila))
+
             resultado = cursor.fetchone()
 
             if resultado:
@@ -107,20 +110,18 @@ class GerenciadorFila:
             id_paciente (int): ID do paciente
             tipo_fila (int): 0 = Triagem, 1 = Atendimento
             id_profissional (int): ID do profissional que encaminhou (opcional)
-            prioridade (int): Prioridade (1: Alta, 2: Média, 3: Baixa)
+            prioridade (int): Prioridade (1: Vermelha, 2: Laranja, 3: Amarela, 4: Verde, 5: Azul)
         
         Returns:
             int: ID da entrada na fila
         """
+
         with self._conectar() as conn:
             cursor = conn.cursor()
-
             cursor.execute('''
             INSERT INTO fila (id_paciente, tipo_fila, prioridade)
-            VALUES (?, ?, ?)
-        ''', (id_paciente, tipo_fila, prioridade))
-
-
+                VALUES (?, ?, ?)
+            ''', (id_paciente, tipo_fila, prioridade))
 
             id_fila = cursor.lastrowid
 
@@ -147,26 +148,26 @@ class GerenciadorFila:
         """
         with self._conectar() as conn:
             cursor = conn.cursor()
-            
+
             try:
                 # Recuperar o status atual
                 cursor.execute('SELECT status FROM fila WHERE id = ?', (id_fila,))
                 status_atual = cursor.fetchone()[0]
-                
+
                 # Atualizar o status
                 cursor.execute('''
                     UPDATE fila
                     SET status = ?
                     WHERE id = ?
                 ''', (novo_status, id_fila))
-                
+
                 # Registrar a movimentação no histórico
                 cursor.execute('''
                     INSERT INTO fila_historico 
                     (id_fila, status_anterior, status_novo, observacoes)
                     VALUES (?, ?, ?, ?)
                 ''', (id_fila, status_atual, novo_status, observacoes))
-                
+
                 conn.commit()
                 return True
             except Exception as e:
@@ -174,6 +175,8 @@ class GerenciadorFila:
                 print(f"Erro ao atualizar status: {e}")
                 return False
 
+    # Quando tipo_fila é o único parâmetro com argumento definido, ele retorna
+    # todos os objetos daquela respectiva fila
     def buscar_fila(self, tipo_fila=None, status=None, prioridade=None):
         """
         Busca pacientes na fila com filtros opcionais.
@@ -186,6 +189,7 @@ class GerenciadorFila:
         Returns:
             list: Lista de dicionários com os registros da fila
         """
+
         with self._conectar() as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -195,9 +199,8 @@ class GerenciadorFila:
                 SELECT f.id, f.id_paciente,
                 f.data_entrada, f.tipo_fila, f.status, f.prioridade,
                 p.nome as nome_paciente
-            FROM fila f
-            LEFT JOIN pacientes p ON f.id_paciente = p.id
-
+                FROM fila f
+                LEFT JOIN pacientes p ON f.id_paciente = p.id
             '''
 
             conditions = []
@@ -222,7 +225,58 @@ class GerenciadorFila:
             query += ' ORDER BY f.prioridade, f.data_entrada'
 
             cursor.execute(query, params)
-            return [dict(row) for row in cursor.fetchall()]
+            pacientesData = [dict(row) for row in cursor.fetchall()]
+            fila_triagem = FilaTriagem.get_instancia()
+            fila_atendimento = FilaAtendimento.get_instancia()
+            paciente_builder = PacienteBuilder()
+            gerenciador_leitos = GerenciadorLeitos()
+            for p in pacientesData:
+                paciente_id = p.get("id_paciente")
+                cursor.execute('''
+                        SELECT nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, status
+                        from pacientes where id = ?
+                    ''', (paciente_id,))
+                args = cursor.fetchone()
+                nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, status = args
+                if status == "inativo" or gerenciador_leitos.isEmLeito(paciente_id):
+                    continue
+
+                cursor.execute(
+                    "SELECT escala_dor, escala_glascow, sinais_vitais FROM triagens where paciente_id = ?"
+                    , (paciente_id,))
+
+                args = cursor.fetchone()
+
+                escala_dor, escala_glascow, sinais_vitais = args
+
+                paciente = paciente_builder.set_nome(nome) \
+                    .set_cpf(cpf) \
+                    .set_contato_emg([telefone, email]) \
+                    .set_idade(data_nascimento) \
+                    .set_sexo(sexo) \
+                    .set_tipo_sang(tipo_sanguineo) \
+                    .set_id(int(paciente_id)) \
+                    .build()
+
+                triagem = Triagem(paciente, int(escala_dor), int(escala_glascow), int(sinais_vitais))
+                paciente.set_triagem(triagem)
+                triagem.definir_prioridade()
+
+                cursor.execute('''
+                        SELECT data_entrada from fila where id_paciente = ?
+                    ''', (paciente_id,))
+                horario_entrada = datetime.datetime.strptime(cursor.fetchone()[0], "%Y-%m-%d %H:%M:%S")
+                if tipo_fila == 0:
+                    fila_triagem.adicionar_paciente_e_horario(paciente, horario_entrada)
+                else:
+                    fila_atendimento.adicionar_paciente_e_horario(paciente, horario_entrada)
+
+            if tipo_fila == 0:
+                return fila_triagem
+            else:
+                return fila_atendimento
+
+            # return [dict(row) for row in cursor.fetchall()]
 
     def buscar_historico_fila(self, id_fila):
         """
@@ -256,7 +310,7 @@ if __name__ == "__main__":
     id_fila = gerenciador.adicionar_paciente_fila(
         id_paciente=1,
         tipo_fila=0,  # Triagem
-        #id_profissional=3,
+        # id_profissional=3,
         prioridade=2
     )
     print(f"Paciente adicionado à fila com ID: {id_fila}")
