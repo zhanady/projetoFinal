@@ -1,10 +1,12 @@
-from farmacia.Farmacia import Farmacia
+from projetoFinal.model.farmacia.Farmacia import Farmacia
 
 
 class Prescricao:
     def __init__(self, paciente, medico, remedios):
         self.paciente = paciente
         self.medico = medico
+        # "remedios" vai ser um dicionário. Instâncias de Remedio serão as
+        # chaves e a quantidade deles serão os valores
         self.remedios = remedios
 
     def get_paciente(self):
@@ -15,7 +17,7 @@ class Prescricao:
 
     # retorna uma cópia da lista de remédios
     def get_remedios(self):
-        return self.remedios[:]
+        return dict(self.remedios)
 
     def adicionar_medicamento(self, remedio):
         self.remedios.append(remedio)

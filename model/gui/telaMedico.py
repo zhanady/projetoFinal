@@ -16,6 +16,7 @@ from projetoFinal.model.sistemaemergencial.Triagem import Triagem
 class TelaMedico(ctk.CTkFrame):
     def __init__(self, master, paciente, **kwargs):
         super().__init__(master, fg_color="white", **kwargs)
+        self.usuario_id = None
         self.paciente = paciente  # Dicionario com atributos do paciente
         self.chat_screen = None
         self.gerenciador = GerenciadorPacientes()
@@ -381,10 +382,12 @@ class TelaMedico(ctk.CTkFrame):
     def mostrar_chat(self):
         self.limpar_area_principal()
         self.chat_screen = ChatScreen(self.area_principal)
+        self.chat_screen.set_usuario_id(self.usuario_id)
         self.chat_screen.pack(fill="both", expand=True)
 
     def abrir_solicitacao_medicamento(self):
-        TelaSolicitarMedicamento(self)
+        tela = TelaSolicitarMedicamento(self)
+        tela.set_profissional_paciente_id(self.usuario_id, self.paciente["id"])
 
     def mostrar_relatorio(self, event):
         if self.menu_relatorio_visivel:
@@ -396,11 +399,15 @@ class TelaMedico(ctk.CTkFrame):
             self.relatorio_menu.place(x=x + 10, y=y + 10)
             self.menu_relatorio_visivel = True
 
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
+
 
 class TelaPrincipal(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, fg_color="white", **kwargs)
 
+        self.usuario_id = None
         self.menu_relatorio_visivel = False
 
         self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#F8F9FA", border_width=1)
@@ -419,9 +426,9 @@ class TelaPrincipal(ctk.CTkFrame):
                                         command=self.mostrar_leitos)
         self.btn_leitos.pack(padx=10, pady=5, fill="x")
 
-        btn_relatorios = ctk.CTkButton(self.sidebar, text="Relatórios", fg_color="black", anchor="w")
-        btn_relatorios.pack(padx=10, pady=5, fill="x")
-        btn_relatorios.bind("<Button-1>", self.mostrar_relatorio)
+        # btn_relatorios = ctk.CTkButton(self.sidebar, text="Relatórios", fg_color="black", anchor="w")
+        # btn_relatorios.pack(padx=10, pady=5, fill="x")
+        # btn_relatorios.bind("<Button-1>", self.mostrar_relatorio)
 
         ctk.CTkButton(self.sidebar, text="Log out", fg_color="black", anchor="w", command=self.quit).pack(side="bottom",
                                                                                                           padx=10,
@@ -463,11 +470,13 @@ class TelaPrincipal(ctk.CTkFrame):
     def mostrar_atendimento(self, paciente):
         self.limpar_area_principal()
         tela = TelaMedico(self.area_principal, paciente=paciente)
+        tela.set_usuario_id(self.usuario_id)
         tela.pack(fill="both", expand=True)
 
     def mostrar_chat(self):
         self.limpar_area_principal()
         tela = ChatScreen(self.area_principal)
+        tela.set_usuario_id(self.usuario_id)
         tela.pack(fill="both", expand=True)
 
     def mostrar_relatorio(self, event):
@@ -479,6 +488,9 @@ class TelaPrincipal(ctk.CTkFrame):
             y = event.y_root - self.winfo_rooty()
             self.menu_relatorio.place(x=x + 10, y=y + 10)
             self.menu_relatorio_visivel = True
+
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
 
 
 if __name__ == "__main__":

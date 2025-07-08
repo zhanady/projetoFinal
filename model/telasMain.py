@@ -1,3 +1,5 @@
+import sqlite3
+
 import customtkinter as ctk
 from gui.telaLogin import *
 from gui.telaMedico import *
@@ -15,12 +17,15 @@ def app_inicial(usuario: dict):
     tipo = usuario['tipo']
     if tipo == 0:
         tela_medico = TelaPrincipal(app)
+        tela_medico.set_usuario_id(usuario['id'])
         tela_medico.pack(fill="both", expand=True)
     elif tipo == 1:
         tela_atendente = AppAtendente(app)
+        tela_atendente.set_usuario_id(usuario['id'])
         tela_atendente.pack(fill="both", expand=True)
     elif tipo == 2:
         tela_farmacia = TelaFarmaceutico(app)
+        tela_farmacia.set_usuario_id(usuario['id'])
         tela_farmacia.pack(fill="both", expand=True)
     else:
         print("Tipo de usuário desconhecido")

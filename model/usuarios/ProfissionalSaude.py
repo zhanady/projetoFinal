@@ -1,4 +1,4 @@
-from Usuario import Usuario
+from usuarios.Usuario import Usuario
 
 
 class ProfissionalSaude(Usuario):
@@ -6,7 +6,7 @@ class ProfissionalSaude(Usuario):
         super().__init__(login, senha, categoria)
 
         # um médico ou enfermeira não pode ser cliente (ou singularmente um cliente)
-        if not categoria != Usuario.CLIENTE:
+        if categoria != Usuario.MEDICO:
             pass
 
         self.residencia = residencia

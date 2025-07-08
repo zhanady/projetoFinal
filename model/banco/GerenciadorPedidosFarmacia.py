@@ -18,6 +18,8 @@ class GerenciadorPedidosFarmacia:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS pedidos_farmacia (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    paciente_id INTEGER NOT NULL,
+                    profissional_id INTEGER NOT NULL,
                     medicamento TEXT NOT NULL,
                     principio_ativo TEXT,
                     concentracao TEXT,
@@ -33,6 +35,8 @@ class GerenciadorPedidosFarmacia:
         """
         Insere um novo pedido de medicamento. Exemplo de `dados`:
         {
+            "paciente_id": 3
+            "profissional_id": 5
             "medicamento": "Dipirona",
             "principio_ativo": "Dipirona Sódica",
             "concentracao": "500mg",

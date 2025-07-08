@@ -34,7 +34,7 @@ class GerenciadorProfissionais:
                     cargo TEXT NOT NULL,
                     departamento TEXT NOT NULL,
                     registro TEXT,
-                    status TEXT NOT NULL,
+                    status TEXT NOT NULL
                 )
             ''')
             conn.commit()

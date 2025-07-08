@@ -7,6 +7,8 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
         super().__init__(master, **kwargs)
         self.gerenciador = GerenciadorPedidosFarmacia()
         self.atualizar_callback = atualizar_callback
+        self.profissional_id = None
+        self.paciente_id = None
 
         self.title("Solicitar Medicamento")
         self.geometry("400x400")
@@ -43,7 +45,12 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
             return
 
         try:
+            if self.profissional_id is None or self.paciente_id is None:
+                raise Exception("É necessário existir um profissional e um paciente configurado")
+
             dados = {
+                "paciente_id": self.paciente_id,
+                "profissional_id": self.profissional_id,
                 "medicamento": nome,
                 "principio_ativo": nome,  # ou você pode deixar um campo separado depois
                 "concentracao": conc,
@@ -61,3 +68,7 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
 
         except Exception as e:
             print(f"Erro ao registrar pedido: {e}")
+
+    def set_profissional_paciente_id(self, profissional_id, paciente_id):
+        self.profissional_id = profissional_id
+        self.paciente_id = paciente_id

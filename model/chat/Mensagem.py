@@ -1,7 +1,8 @@
 class Mensagem:
-    def __init__(self, usuario, mensagem):
+    def __init__(self, usuario, mensagem, data):
         self.usuario = usuario
         self.mensagem = mensagem
+        self.data = data
 
     def get_usuario(self):
         return self.usuario
@@ -14,5 +15,11 @@ class Mensagem:
 
     def set_mensagem(self, valor):
         self.mensagem = valor
+
+    def get_data(self):
+        return self.data
+
+    def set_data(self, data):
+        self.data = data
 
 
