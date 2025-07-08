@@ -7,11 +7,18 @@ from datetime import datetime, timedelta
 
 class GerenciadorPacientes:
     def __init__(self, db_name: str = '../hospital.db'):
+        """
+        Inicializa o gerenciador de pacientes com acesso ao banco de dados.
+        
+        Args:
+            db_name (str): Caminho para o banco de dados SQLite.
+        """
         self.db_name = db_name
         self._criar_tabelas()
-        self.gerenciadorFila = GerenciadorFila()
+        self.gerenciadorFila = GerenciadorFila()  # Gerencia a fila de atendimento
 
     def _conectar(self):
+        """Estabelece conexão com o banco de dados."""
         return sqlite3.connect(self.db_name)
 
     def _criar_tabelas(self):
@@ -23,6 +30,7 @@ class GerenciadorPacientes:
         with self._conectar() as conn:
             cursor = conn.cursor()
 
+            # Tabela de pacientes
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS pacientes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,6 +46,7 @@ class GerenciadorPacientes:
                 );
             ''')
 
+            # Tabela de triagens
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS triagens (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,6 +59,7 @@ class GerenciadorPacientes:
                 );
             ''')
 
+            # Tabela de histórico de atendimentos
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS historico_atendimentos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,14 +76,21 @@ class GerenciadorPacientes:
             conn.commit()
 
     def paciente_existe(self, id_paciente):
+        """Verifica se o paciente existe no banco."""
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM pacientes WHERE id = ?", (id_paciente,))
             return cursor.fetchone() is not None
 
-    def cadastrar_ou_reativar(self, nome, cpf, telefone, email, data_nascimento, sexo
-                              , tipo_sanguineo, endereco, escala_dor, escala_glascow, sinais_vitais
-                              ):
+    def cadastrar_ou_reativar(self, nome, cpf, telefone, email, data_nascimento, sexo,
+                              tipo_sanguineo, endereco, escala_dor, escala_glascow, sinais_vitais):
+        """
+        Cadastra um novo paciente ou reativa um paciente inativo.
+        Também registra a triagem e, se necessário, o insere na fila ou leito.
+
+        Retorna:
+            int: ID do paciente
+        """
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id, status FROM pacientes WHERE cpf = ?", (cpf,))
@@ -81,9 +98,8 @@ class GerenciadorPacientes:
 
             if resultado:
                 paciente_id, status_atual = resultado
-                # Se já existe e está inativo, reativar
-                # Ativo: está em fila ou leito
-                # Inativo: não está em nenhum lugar
+
+                # Se já existe e está inativo, reativa e registra nova triagem
                 if status_atual.lower() == "inativo":
                     cursor.execute("UPDATE pacientes SET status = 'ativo' WHERE id = ?", (paciente_id,))
 
@@ -101,26 +117,20 @@ class GerenciadorPacientes:
                 else:
                     print(f"Paciente com CPF {cpf} já está ativo.")
 
-                    # Se já está ativo, não há necessidade de atualizar a triagem
-                    # self.gerenciadorFila.adicionar_paciente_fila(id_paciente=paciente_id, tipo_fila=0, prioridade=3)
-
                 return paciente_id
 
-            # Caso não exista, criar novo
-            # Cria paciente
+            # Novo cadastro
             cursor.execute('''
                 INSERT INTO pacientes (nome, cpf, telefone, email, data_nascimento, sexo, tipo_sanguineo, endereco, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ativo')
             ''', (nome, cpf, telefone, email, data_nascimento, sexo,
                   tipo_sanguineo, endereco))
 
-            # Resgata ID de paciente para criar triagem
             cursor.execute('''
                 SELECT id FROM pacientes where cpf = ?
             ''', (cpf,))
-
             id = cursor.fetchone()[0]
-            # Cria triagem
+
             cursor.execute('''
                 INSERT INTO triagens (paciente_id, escala_dor, escala_glascow, sinais_vitais) 
                 VALUES (?, ?, ?, ?)
@@ -132,30 +142,18 @@ class GerenciadorPacientes:
 
             if not self.verificar_triagem_vermelha(novo_id, escala_dor,
                                                    escala_glascow, sinais_vitais):
-                # Adiciona à fila
+                # Adiciona à fila se não for caso vermelho
                 if self.gerenciadorFila:
                     try:
                         self.gerenciadorFila.adicionar_paciente_fila(id_paciente=novo_id, tipo_fila=0, prioridade=3)
                         print("Paciente adicionado à fila.")
                     except Exception as e:
                         print(f"Erro ao adicionar novo paciente à fila: {e}")
-
+    
             return novo_id
-
-        # Verifica se o paciente de fato está no banco
-        teste = self.consultar(filtros={"id": id_paciente})
-        print("Consulta paciente por ID:", teste)
-        # Agora fora do `with` (ou use novo `with`), para evitar reuso de conexão antiga
-        if self.gerenciadorFila and id_paciente:
-            try:
-                self.gerenciadorFila.adicionar_paciente_fila(id_paciente=id_paciente, tipo_fila=0, prioridade=3)
-            except Exception as e:
-                print(f"Erro ao adicionar paciente à fila: {e}")
-                return None
-
-        return id_paciente
-
+        
     def finalizar_ultimo_atendimento(self, paciente_id: int):
+        """Finaliza o atendimento mais recente de um paciente."""
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -180,11 +178,21 @@ class GerenciadorPacientes:
 
     def registrar_atendimento(self, paciente_id: int, sintomas: str, descricao: str, diagnostico: str,
                               status: str = "pendente", usuario_id: Optional[int] = None):
+        """
+        Registra um novo atendimento e atualiza a fila do paciente.
+
+        Args:
+            paciente_id: ID do paciente
+            sintomas: sintomas relatados
+            descricao: descrição do caso
+            diagnostico: diagnóstico médico
+            status: status do atendimento
+            usuario_id: ID do profissional de saúde (opcional)
+        """
         if not diagnostico or diagnostico.strip() == "":
             print("Diagnóstico não pode estar vazio.")
             return
 
-        # Verificar se o paciente existe antes de inserir
         if not self.paciente_existe(paciente_id):
             print(f"Erro: paciente com ID {paciente_id} não existe.")
             return
@@ -196,19 +204,17 @@ class GerenciadorPacientes:
                     INSERT INTO historico_atendimentos (paciente_id, usuario_id, data, sintomas, descricao, diagnostico, status)
                     VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
                 ''', (paciente_id, usuario_id, sintomas, descricao, diagnostico, status))
-                cursor.execute(''' 
-                    DELETE FROM fila WHERE id_paciente = ?
-                ''', (paciente_id,))
-                cursor.execute('''
-                    INSERT INTO fila (id_paciente, tipo_fila) 
-                    VALUES (?, ?)
-                ''', (paciente_id, 1))
+
+                # Remove da fila atual e coloca na de atendidos
+                cursor.execute('''DELETE FROM fila WHERE id_paciente = ?''', (paciente_id,))
+                cursor.execute('''INSERT INTO fila (id_paciente, tipo_fila) VALUES (?, ?)''', (paciente_id, 1))
                 conn.commit()
                 print("Atendimento registrado com sucesso!")
             except sqlite3.IntegrityError as e:
                 print(f"Erro ao registrar atendimento: {e}")
 
     def obter_historico_paciente(self, paciente_id: int) -> List[Dict[str, Any]]:
+        """Retorna o histórico de atendimentos do paciente, ordenado da data mais recente para a mais antiga."""
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -221,6 +227,7 @@ class GerenciadorPacientes:
             return [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
     def consultar(self, filtros: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Consulta os pacientes com base nos filtros fornecidos."""
         with self._conectar() as conn:
             cursor = conn.cursor()
             query = 'SELECT * FROM pacientes'
@@ -238,6 +245,7 @@ class GerenciadorPacientes:
             return [dict(zip(colunas, row)) for row in cursor.fetchall()]
 
     def atualizar(self, id_paciente: int, novos_dados: Dict[str, Any]):
+        """Atualiza informações do paciente com base no ID e campos passados."""
         if not novos_dados:
             print("Nenhum dado para atualizar.")
             return
@@ -254,12 +262,14 @@ class GerenciadorPacientes:
             conn.commit()
 
     def remover(self, id_paciente: int):
+        """Remove completamente o paciente do sistema."""
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM pacientes WHERE id = ?", (id_paciente,))
             conn.commit()
 
     def encerrar_atendimento(self, id_paciente: int):
+        """Marca o paciente como desativo após atendimento."""
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -270,6 +280,7 @@ class GerenciadorPacientes:
             conn.commit()
 
     def get_paciente(self, id):
+        """Retorna o objeto Paciente via builder, com base no ID do banco."""
         with (self._conectar() as conn):
             paciente_builder = PacienteBuilder()
             cursor = conn.cursor()
@@ -288,6 +299,7 @@ class GerenciadorPacientes:
                 .build()
 
     def get_triagem(self, id):
+        """Obtém a cor da pulseira do paciente baseado na triagem."""
         with (self._conectar() as conn):
             cursor = conn.cursor()
             cursor.execute('''
@@ -300,6 +312,7 @@ class GerenciadorPacientes:
             return triagem.get_cor_pulseira()
 
     def limpar_triagens(self, paciente_id):
+        """Remove os dados de triagem de um paciente."""
         with (self._conectar() as conn):
             cursor = conn.cursor()
             cursor.execute('''
@@ -309,6 +322,12 @@ class GerenciadorPacientes:
     # retorna true se a triagem for vermelha E for possível por o paciente em
     # um leito
     def verificar_triagem_vermelha(self, paciente_id, escala_dor, escala_glascow, sinais_vitais):
+        """
+        Verifica se a triagem é vermelha e tenta alocar o paciente em um leito.
+
+        Returns:
+            bool: True se foi possível alocar, False caso contrário.
+        """
         triagem = Triagem(None, int(escala_dor), int(escala_glascow), int(sinais_vitais))
         triagem.definir_prioridade()
         if triagem.get_cor_pulseira() == Triagem.VERMELHA:

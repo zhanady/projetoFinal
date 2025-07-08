@@ -1,18 +1,32 @@
 import sqlite3
 from datetime import datetime
-from banco.GerenciadorFarmacias import *
+from banco.GerenciadorFarmacias import *  # Importa o gerenciador de farmácia para manipular o estoque
 
 class GerenciadorPedidosFarmacia:
     def __init__(self, db_name='../hospital.db'):
-        self.db_name = db_name
-        self.farmacia = GerenciadorFarmacia(db_name)
+        """
+        Inicializa o gerenciador de pedidos da farmácia.
 
+        Args:
+            db_name (str): Caminho para o banco de dados SQLite.
+        """
+        self.db_name = db_name
+        self.farmacia = GerenciadorFarmacia(db_name)  # Instância para gerenciar estoque de medicamentos
         self._criar_tabela()
 
     def _conectar(self):
+        """
+        Estabelece uma conexão com o banco de dados.
+
+        Returns:
+            sqlite3.Connection: conexão ativa com o banco.
+        """
         return sqlite3.connect(self.db_name)
 
     def _criar_tabela(self):
+        """
+        Cria a tabela de pedidos da farmácia no banco de dados, se ainda não existir.
+        """
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -31,20 +45,26 @@ class GerenciadorPedidosFarmacia:
 
     def registrar_pedido(self, dados: dict) -> int:
         """
-        Insere um novo pedido de medicamento. Exemplo de `dados`:
-        {
-            "medicamento": "Dipirona",
-            "principio_ativo": "Dipirona Sódica",
-            "concentracao": "500mg",
-            "quantidade_solicitada": 20,
-            "urgencia": "alta"
-        }
+        Insere um novo pedido de medicamento na tabela.
+
+        Args:
+            dados (dict): Dicionário com os dados do pedido. Exemplo:
+                {
+                    "medicamento": "Dipirona",
+                    "principio_ativo": "Dipirona Sódica",
+                    "concentracao": "500mg",
+                    "quantidade_solicitada": 20,
+                    "urgencia": "alta"
+                }
+
+        Returns:
+            int: ID do novo pedido registrado.
         """
         with self._conectar() as conn:
             cursor = conn.cursor()
-            campos = list(dados.keys())
-            valores = list(dados.values())
-            placeholders = ','.join(['?'] * len(dados))
+            campos = list(dados.keys())  # Nomes das colunas a inserir
+            valores = list(dados.values())  # Valores correspondentes
+            placeholders = ','.join(['?'] * len(dados))  # Cria os "?" para o SQL
 
             cursor.execute(f'''
                 INSERT INTO pedidos_farmacia ({','.join(campos)})
@@ -54,8 +74,15 @@ class GerenciadorPedidosFarmacia:
             return cursor.lastrowid
 
     def buscar_pedidos_pendentes(self):
+        """
+        Retorna todos os pedidos com status 'pendente', ordenados por prioridade de urgência
+        (alta, média, baixa) e pela data da solicitação (mais antigos primeiro).
+
+        Returns:
+            List[dict]: Lista de pedidos pendentes.
+        """
         with self._conectar() as conn:
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlite3.Row  # Permite acessar resultados como dicionário
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT * FROM pedidos_farmacia
@@ -68,17 +95,25 @@ class GerenciadorPedidosFarmacia:
                     END,
                     data_solicitacao ASC
             ''')
-            return [dict(row) for row in cursor.fetchall()]
+            return [dict(row) for row in cursor.fetchall()]  # Converte linhas em dicionários
 
     def confirmar_pedido(self, pedido_id: int, medicamento: str, quantidade: int) -> bool:
         """
-        Marca o pedido como finalizado e atualiza o estoque do medicamento usando GerenciadorFarmacia.
+        Finaliza um pedido de farmácia, atualiza o estoque do medicamento e marca o pedido como concluído.
+
+        Args:
+            pedido_id (int): ID do pedido na tabela `pedidos_farmacia`.
+            medicamento (str): Nome do medicamento ou princípio ativo.
+            quantidade (int): Quantidade a ser retirada do estoque.
+
+        Returns:
+            bool: True se o pedido foi processado com sucesso, False caso contrário.
         """
         try:
             with self._conectar() as conn:
                 cursor = conn.cursor()
 
-                # 1. Verifica o estoque atual via nome
+                # 1. Verifica o estoque atual pelo nome ou princípio ativo
                 cursor.execute('''
                     SELECT id, quantidade FROM farmacia 
                     WHERE LOWER(medicamento) = LOWER(?) 
@@ -93,18 +128,20 @@ class GerenciadorPedidosFarmacia:
                     return False
 
                 id_medicamento, estoque_atual = row
+
+                # 2. Verifica se há estoque suficiente
                 if estoque_atual < quantidade:
                     print(f"Estoque insuficiente para '{medicamento}'.")
                     return False
 
-                # 2. Atualiza o estoque usando o GerenciadorFarmacia
+                # 3. Atualiza o estoque com o novo valor (estoque - quantidade solicitada)
                 novo_estoque = estoque_atual - quantidade
                 sucesso = self.farmacia.atualizar_estoque(id_medicamento, novo_estoque)
                 if not sucesso:
                     print("Erro ao atualizar estoque.")
                     return False
 
-                # 3. Marca pedido como finalizado
+                # 4. Marca o pedido como finalizado
                 cursor.execute('UPDATE pedidos_farmacia SET status = ? WHERE id = ?', ('finalizado', pedido_id))
 
                 conn.commit()
@@ -113,4 +150,3 @@ class GerenciadorPedidosFarmacia:
         except Exception as e:
             print(f"Erro ao confirmar pedido: {e}")
             return False
-
