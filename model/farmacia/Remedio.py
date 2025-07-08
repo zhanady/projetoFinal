@@ -1,19 +1,24 @@
 class Remedio:
+    def __init__(self, medicamento, principio_ativo, concentracao):
+        self.medicamento = medicamento
+        self.principio_ativo = principio_ativo
+        self.concentracao = concentracao
 
-    def __init__(self, nome, categoria):
-        self.nome = nome
-        self.categoria = categoria
+    def get_medicamento(self):
+        return self.medicamento
 
-    def get_nome(self):
-        return self.nome
+    def set_medicamento(self, medicamento):
+        self.medicamento = medicamento
 
-    def set_nome(self, nome):
-        self.nome = nome
+    def get_principio_ativo(self):
+        return self.principio_ativo
 
-    def get_categoria(self):
-        return self.categoria
+    def set_principio_ativo(self, principio_ativo):
+        self.principio_ativo = principio_ativo
 
-    def set_categoria(self, categoria):
-        self.categoria = categoria
+    def get_concentracao(self):
+        return self.concentracao
 
+    def set_concentracao(self, concentracao):
+        self.concentracao = concentracao
 

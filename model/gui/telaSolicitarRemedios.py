@@ -6,8 +6,10 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
     def __init__(self, master, atualizar_callback=None, **kwargs):
         # Inicializa a janela Toplevel (secundária) herdada de CTkToplevel
         super().__init__(master, **kwargs)
-        self.gerenciador = GerenciadorPedidosFarmacia()  # Instância do gerenciador responsável por registrar o pedido
-        self.atualizar_callback = atualizar_callback  # Callback opcional para atualizar tela anterior após o pedido
+        self.gerenciador = GerenciadorPedidosFarmacia()
+        self.atualizar_callback = atualizar_callback
+        self.profissional_id = None
+        self.paciente_id = None
 
         # Configurações da janela
         self.title("Solicitar Medicamento")
@@ -51,8 +53,12 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
             return
 
         try:
-            # Cria o dicionário de dados do pedido com os valores fornecidos
+            if self.profissional_id is None or self.paciente_id is None:
+                raise Exception("É necessário existir um profissional e um paciente configurado")
+
             dados = {
+                "paciente_id": self.paciente_id,
+                "profissional_id": self.profissional_id,
                 "medicamento": nome,
                 "principio_ativo": nome,  # Por enquanto, assume o mesmo nome do medicamento
                 "concentracao": conc,
@@ -74,3 +80,7 @@ class TelaSolicitarMedicamento(ctk.CTkToplevel):
         except Exception as e:
             # Em caso de erro durante o registro, exibe o erro no terminal
             print(f"Erro ao registrar pedido: {e}")
+
+    def set_profissional_paciente_id(self, profissional_id, paciente_id):
+        self.profissional_id = profissional_id
+        self.paciente_id = paciente_id

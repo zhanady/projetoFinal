@@ -32,6 +32,8 @@ class GerenciadorPedidosFarmacia:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS pedidos_farmacia (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    paciente_id INTEGER NOT NULL,
+                    profissional_id INTEGER NOT NULL,
                     medicamento TEXT NOT NULL,
                     principio_ativo TEXT,
                     concentracao TEXT,
@@ -45,20 +47,14 @@ class GerenciadorPedidosFarmacia:
 
     def registrar_pedido(self, dados: dict) -> int:
         """
-        Insere um novo pedido de medicamento na tabela.
-
-        Args:
-            dados (dict): Dicionário com os dados do pedido. Exemplo:
-                {
-                    "medicamento": "Dipirona",
-                    "principio_ativo": "Dipirona Sódica",
-                    "concentracao": "500mg",
-                    "quantidade_solicitada": 20,
-                    "urgencia": "alta"
-                }
-
-        Returns:
-            int: ID do novo pedido registrado.
+        Insere um novo pedido de medicamento. Exemplo de `dados`:
+        {
+            "medicamento": "Dipirona",
+            "principio_ativo": "Dipirona Sódica",
+            "concentracao": "500mg",
+            "quantidade_solicitada": 20,
+            "urgencia": "alta"
+        }
         """
         with self._conectar() as conn:
             cursor = conn.cursor()

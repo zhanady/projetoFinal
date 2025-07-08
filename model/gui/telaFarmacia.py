@@ -16,10 +16,11 @@ class TelaFarmaceutico(ctk.CTkFrame):
         """
         super().__init__(master, fg_color="white", **kwargs)
 
-        self.mostrar_chat_callback = mostrar_chat_callback  # Callback externo (opcional)
-        self.menu_relatorio_visivel = False  # Estado do menu de relatório
+        self.usuario_id = None
+        self.mostrar_chat_callback = mostrar_chat_callback
+        self.menu_relatorio_visivel = False
 
-        self.relatorio_menu = MenuRelatorios(self)  # Instancia o menu de relatórios flutuante
+        # self.relatorio_menu = MenuRelatorios(self)
 
         # Sidebar (menu lateral esquerdo)
         self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#F8F9FA", border_width=1)
@@ -36,17 +37,16 @@ class TelaFarmaceutico(ctk.CTkFrame):
         ctk.CTkButton(self.sidebar, text="Estoque", anchor="w", command=self.mostrar_estoque,
                       fg_color="black", text_color="white", hover_color="#333333").pack(pady=5, padx=10, fill="x")
 
-        # Botão de Relatórios
-        self.btn_relatorios = ctk.CTkButton(
-            self.sidebar,
-            text="Relatórios",
-            fg_color="black",
-            anchor="w",
-            text_color="white",
-            hover_color="#333333",
-            command=self.mostrar_relatorio
-        )
-        self.btn_relatorios.pack(padx=10, pady=5, fill="x")
+        # self.btn_relatorios = ctk.CTkButton(
+        #     self.sidebar,
+        #     text="Relatórios",
+        #     fg_color="black",
+        #     anchor="w",
+        #     text_color="white",
+        #     hover_color="#333333",
+        #     command=self.mostrar_relatorio
+        # )
+        # self.btn_relatorios.pack(padx=10, pady=5, fill="x")
 
         # Botão de Chat
         ctk.CTkButton(self.sidebar, text="Chat", anchor="w",
@@ -104,9 +104,14 @@ class TelaFarmaceutico(ctk.CTkFrame):
         for widget in self.area_principal.winfo_children():
             widget.destroy()
         nova_tela = TelaClasse(self.area_principal)
+        if isinstance(nova_tela, ChatScreen):
+            nova_tela.set_usuario_id(self.usuario_id)
         nova_tela.pack(fill="both", expand=True)
 
-# Execução isolada para testes
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
+
+
 if __name__ == "__main__":
     ctk.set_appearance_mode("light")
     app = ctk.CTk()

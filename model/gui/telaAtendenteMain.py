@@ -30,6 +30,8 @@ class AppAtendente(ctk.CTkFrame):
         self.criar_tela_cadastro()
         self.criar_menu_relatorio()
 
+        self.usuario_id = None
+
     def criar_sidebar(self):
         """Cria a barra lateral com os botões de navegação."""
         self.sidebar = ctk.CTkFrame(self, width=200)
@@ -40,8 +42,8 @@ class AppAtendente(ctk.CTkFrame):
         ctk.CTkButton(self.sidebar, text="Cadastrar Paciente", anchor="w",
                       fg_color="black", command=self.mostrar_tela_cadastro).pack(pady=10, padx=10, fill="x")
 
-        ctk.CTkButton(self.sidebar, text="Relatórios", anchor="w",
-                      fg_color="black", command=self.toggle_relatorio_menu).pack(pady=10, padx=10, fill="x")
+        # ctk.CTkButton(self.sidebar, text="Relatórios", anchor="w",
+        #               fg_color="black", command=self.toggle_relatorio_menu).pack(pady=10, padx=10, fill="x")
 
         ctk.CTkButton(self.sidebar, text="Chat", anchor="w",
                       fg_color="black", command=self.mostrar_tela_chat).pack(pady=10, padx=10, fill="x")
@@ -160,9 +162,13 @@ class AppAtendente(ctk.CTkFrame):
         self.main_frame.pack_forget()
         if not self.chat_screen:
             self.chat_screen = ChatScreen(self)
+            self.chat_screen.set_usuario_id(self.usuario_id)
         self.chat_screen.pack(fill="both", expand=True)
 
-# Inicialização da aplicação se este arquivo for executado diretamente
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
+
+
 if __name__ == "__main__":
     root = ctk.CTk()  # Janela principal do app
     root.geometry("1000x600")

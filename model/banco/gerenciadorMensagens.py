@@ -1,5 +1,9 @@
 import sqlite3
 import json
+from datetime import datetime
+
+from chat.Mensagem import Mensagem
+
 
 class GerenciadorMensagens:
     def __init__(self, db_name='../hospital.db'):
@@ -18,13 +22,14 @@ class GerenciadorMensagens:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS registros (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
                     mensagem TEXT NOT NULL,
                     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             conn.commit()
     
-    def inserir_mensagem(self, mensagem_dict):
+    def inserir_mensagem(self, usuario_id, mensagem):
         """
         Insere uma nova mensagem no banco de dados
         
@@ -38,13 +43,13 @@ class GerenciadorMensagens:
             cursor = conn.cursor()
             
             # Converter o dicionário para JSON
-            mensagem_json = json.dumps(mensagem_dict)
+            # mensagem_json = json.dumps(mensagem_dict)
             
             # Inserir no banco de dados
             cursor.execute('''
-                INSERT INTO registros (mensagem)
-                VALUES (?)
-            ''', (mensagem_json,))
+                INSERT INTO registros (usuario_id, mensagem)
+                VALUES (?, ?)
+            ''', (usuario_id, mensagem))
             
             conn.commit()
             return cursor.lastrowid
@@ -64,7 +69,7 @@ class GerenciadorMensagens:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            query = 'SELECT id, mensagem, data_criacao FROM registros'
+            query = 'SELECT id, usuario_id, mensagem, data_criacao FROM registros'
             params = []
             
             if filtros:
@@ -81,7 +86,7 @@ class GerenciadorMensagens:
                 if conditions:
                     query += ' WHERE ' + ' AND '.join(conditions)
             
-            query += ' ORDER BY data_criacao DESC'
+            query += ' ORDER BY data_criacao ASC'
             cursor.execute(query, params)
             
             # Converter resultados para dicionários
@@ -89,8 +94,9 @@ class GerenciadorMensagens:
             for linha in cursor.fetchall():
                 resultado = dict(linha)
                 # Converter mensagem JSON para dicionário
-                resultado['mensagem'] = json.loads(resultado['mensagem'])
-                resultados.append(resultado)
+                mensagem = Mensagem(resultado["usuario_id"], resultado["mensagem"],
+                                     datetime.strptime(resultado["data_criacao"], "%Y-%m-%d %H:%M:%S"))
+                resultados.append(mensagem)
             
             return resultados
     

@@ -2,12 +2,14 @@ import customtkinter as ctk
 from PIL import Image
 import os
 
+from banco.gerenciadorMensagens import GerenciadorMensagens
+
+
 class ChatScreen(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
-        """
-        Inicializa a interface de chat, com sidebar de contatos, área de mensagens e barra de digitação.
-        """
-        super().__init__(master, **kwargs)
+        super().__init__(master,  **kwargs)
+        self.gerenciador = GerenciadorMensagens()
+        self.usuario_id = None
 
         # Cores personalizadas
         black = "#000000"
@@ -27,10 +29,9 @@ class ChatScreen(ctk.CTkFrame):
             pady=0, padx=10, fill="x")
         ctk.CTkFrame(self.sidebar_middle, height=1, fg_color=border_gray).pack(fill="x", padx=10)
 
-        # Contato: Fulano (exemplo)
-        ctk.CTkButton(self.sidebar_middle, text="Fulano", anchor="w", fg_color=black, hover_color=gray_hover).pack(
-            pady=0, padx=10, fill="x")
-        ctk.CTkFrame(self.sidebar_middle, height=1, fg_color=border_gray).pack(fill="x", padx=10)
+        # Contato 2
+        # ctk.CTkButton(self.sidebar_middle, text="Fulano", anchor="w", fg_color=black, hover_color=gray_hover).pack(pady=0, padx=10, fill="x")
+        # ctk.CTkFrame(self.sidebar_middle, height=1, fg_color=border_gray).pack(fill="x", padx=10)
 
         # ==== ÁREA PRINCIPAL DO CHAT ====
         self.chat_frame = ctk.CTkFrame(self)
@@ -42,21 +43,24 @@ class ChatScreen(ctk.CTkFrame):
         ctk.CTkLabel(top_bar, text="Fulano", text_color=black, anchor="w", justify="left").pack(
             padx=6, pady=2, fill="x")
 
-        # ==== SCROLL DE MENSAGENS ====
+        # ctk.CTkLabel(top_bar, text="Fulano", text_color=black, anchor="w", justify="left").pack(padx=6, pady=2, fill="x")
+
+        # Área de mensagens
+        # Área de mensagens com scroll
         self.messages_area = ctk.CTkScrollableFrame(self.chat_frame)
         self.messages_area.pack(fill="both", expand=True, padx=15, pady=10)
 
-        # Mensagem recebida (exemplo inicial à esquerda)
-        msg_frame_left = ctk.CTkFrame(self.messages_area, fg_color="transparent")
-        msg_frame_left.pack(anchor="w", pady=5, padx=10, fill="x")
-        ctk.CTkLabel(msg_frame_left, text="Mensagem recebida", width=300, height=30,
-                     fg_color=msg_bg, corner_radius=6).pack(anchor="w")
 
-        # Mensagem enviada (exemplo inicial à direita)
-        msg_frame_right = ctk.CTkFrame(self.messages_area, fg_color="transparent")
-        msg_frame_right.pack(anchor="e", pady=5, padx=10, fill="x")
-        ctk.CTkLabel(msg_frame_right, text="Mensagem enviada", width=300, height=30,
-                     fg_color=msg_sent_bg, corner_radius=6, text_color=black).pack(anchor="e")
+        # Exemplo de mensagens iniciais
+        # msg_frame_left = ctk.CTkFrame(self.messages_area, fg_color="transparent")
+        # msg_frame_left.pack(anchor="w", pady=5, padx=10, fill="x")
+        # ctk.CTkLabel(msg_frame_left, text="Mensagem recebida", width=300, height=30,
+        #              fg_color=msg_bg, corner_radius=6).pack(anchor="w")
+
+        # msg_frame_right = ctk.CTkFrame(self.messages_area, fg_color="transparent")
+        # msg_frame_right.pack(anchor="e", pady=5, padx=10, fill="x")
+        # ctk.CTkLabel(msg_frame_right, text="Mensagem enviada", width=300, height=30,
+        #              fg_color=msg_sent_bg, corner_radius=6, text_color=black).pack(anchor="e")
 
         # ==== BARRA INFERIOR COM CAMPO DE DIGITAÇÃO ====
         bottom_bar = ctk.CTkFrame(self.chat_frame, height=90, fg_color="#E0E0E0")
@@ -86,6 +90,21 @@ class ChatScreen(ctk.CTkFrame):
         # Atalho para envio com a tecla ENTER
         self.entry.bind("<Return>", lambda event: self.enviar_mensagem())
 
+    def carregar_mensagens(self):
+        mensagens = self.gerenciador.buscar_mensagens()
+
+        for mensagem in mensagens:
+            if mensagem.get_usuario() != self.usuario_id:
+                msg_frame_left = ctk.CTkFrame(self.messages_area, fg_color="transparent")
+                msg_frame_left.pack(anchor="w", pady=5, padx=10, fill="x")
+                ctk.CTkLabel(msg_frame_left, text=mensagem.get_mensagem(), width=300, height=30,
+                             fg_color="#CCCCCC", corner_radius=6).pack(anchor="w")
+            else:
+                msg_frame_right = ctk.CTkFrame(self.messages_area, fg_color="transparent")
+                msg_frame_right.pack(anchor="e", pady=5, padx=10, fill="x")
+                ctk.CTkLabel(msg_frame_right, text=mensagem.get_mensagem(), width=300, height=30,
+                             fg_color="#FFFFFF", corner_radius=6, text_color="#000000").pack(anchor="e")
+
     def enviar_mensagem(self):
         """
         Envia a mensagem digitada pelo usuário, exibe na área de mensagens e limpa o campo.
@@ -100,6 +119,8 @@ class ChatScreen(ctk.CTkFrame):
         msg_frame = ctk.CTkFrame(self.messages_area, fg_color="transparent")
         msg_frame.pack(anchor="e", pady=5, padx=10, fill="x")
 
+        print(self.usuario_id)
+        self.gerenciador.inserir_mensagem(self.usuario_id, mensagem)
         ctk.CTkLabel(
             msg_frame,
             text=mensagem,
@@ -111,10 +132,15 @@ class ChatScreen(ctk.CTkFrame):
             anchor="e"
         ).pack(anchor="e")
 
-        self.entry.delete(0, "end")  # Limpa o campo após envio
+
+        self.entry.delete(0, "end")  # Limpa o campo
+
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
+        self.carregar_mensagens()
 
 
-# Execução da janela isoladamente (modo teste)
+# Execução
 if __name__ == "__main__":
     ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("blue")

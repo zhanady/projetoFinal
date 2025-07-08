@@ -19,13 +19,13 @@ class TelaMedico(ctk.CTkFrame):
     def __init__(self, master, paciente, **kwargs):
         # Inicializa a tela principal do médico, passando os dados do paciente selecionado
         super().__init__(master, fg_color="white", **kwargs)
-        self.paciente = paciente  # Dicionário com dados do paciente atual
-        self.chat_screen = None  # Inicializa o chat como inativo
-        self.gerenciador = GerenciadorPacientes()  # Gerencia dados do paciente
-        self.relatorio_menu = MenuRelatorios(self)  # Menu de relatórios
-        self.gerenciador_leitos = GerenciadorLeitos()  # Gerencia os leitos hospitalares
+        self.usuario_id = None
+        self.paciente = paciente  # Dicionario com atributos do paciente
+        self.chat_screen = None
+        self.gerenciador = GerenciadorPacientes()
+        self.relatorio_menu = MenuRelatorios(self)
+        self.gerenciador_leitos = GerenciadorLeitos()
 
-        # Oculta o menu de relatórios por padrão
         self.relatorio_menu.place_forget()
         self.menu_relatorio_visivel = False
 
@@ -353,11 +353,12 @@ class TelaMedico(ctk.CTkFrame):
         # Troca a tela principal para o chat
         self.limpar_area_principal()
         self.chat_screen = ChatScreen(self.area_principal)
+        self.chat_screen.set_usuario_id(self.usuario_id)
         self.chat_screen.pack(fill="both", expand=True)
 
     def abrir_solicitacao_medicamento(self):
-        # Abre a janela de solicitação de medicamento (como Toplevel)
-        TelaSolicitarMedicamento(self)
+        tela = TelaSolicitarMedicamento(self)
+        tela.set_profissional_paciente_id(self.usuario_id, self.paciente["id"])
 
     def mostrar_relatorio(self, event):
         # Alterna visibilidade do menu de relatórios na tela do médico
@@ -370,13 +371,17 @@ class TelaMedico(ctk.CTkFrame):
             self.relatorio_menu.place(x=x + 10, y=y + 10)
             self.menu_relatorio_visivel = True
 
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
+
 
 class TelaPrincipal(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         # Inicializa o frame principal da aplicação
         super().__init__(master, fg_color="white", **kwargs)
 
-        self.menu_relatorio_visivel = False  # Controla a visibilidade do menu de relatórios
+        self.usuario_id = None
+        self.menu_relatorio_visivel = False
 
         # Cria a barra lateral (menu)
         self.sidebar = ctk.CTkFrame(self, width=200, fg_color="#F8F9FA", border_width=1)
@@ -398,10 +403,9 @@ class TelaPrincipal(ctk.CTkFrame):
                                         command=self.mostrar_leitos)
         self.btn_leitos.pack(padx=10, pady=5, fill="x")
 
-        # Botão de relatórios com evento de clique vinculado
-        btn_relatorios = ctk.CTkButton(self.sidebar, text="Relatórios", fg_color="black", anchor="w")
-        btn_relatorios.pack(padx=10, pady=5, fill="x")
-        btn_relatorios.bind("<Button-1>", self.mostrar_relatorio)
+        # btn_relatorios = ctk.CTkButton(self.sidebar, text="Relatórios", fg_color="black", anchor="w")
+        # btn_relatorios.pack(padx=10, pady=5, fill="x")
+        # btn_relatorios.bind("<Button-1>", self.mostrar_relatorio)
 
         # Botão para logout (finaliza o app)
         ctk.CTkButton(self.sidebar, text="Log out", fg_color="black", anchor="w", command=self.quit).pack(
@@ -450,12 +454,14 @@ class TelaPrincipal(ctk.CTkFrame):
         # Mostra a tela de atendimento médico para um paciente específico
         self.limpar_area_principal()
         tela = TelaMedico(self.area_principal, paciente=paciente)
+        tela.set_usuario_id(self.usuario_id)
         tela.pack(fill="both", expand=True)
 
     def mostrar_chat(self):
         # Mostra a tela de chat
         self.limpar_area_principal()
         tela = ChatScreen(self.area_principal)
+        tela.set_usuario_id(self.usuario_id)
         tela.pack(fill="both", expand=True)
 
     def mostrar_relatorio(self, event):
@@ -469,6 +475,9 @@ class TelaPrincipal(ctk.CTkFrame):
             y = event.y_root - self.winfo_rooty()
             self.menu_relatorio.place(x=x + 10, y=y + 10)
             self.menu_relatorio_visivel = True
+
+    def set_usuario_id(self, usuario_id):
+        self.usuario_id = usuario_id
 
 
 # Ponto de entrada do programa
