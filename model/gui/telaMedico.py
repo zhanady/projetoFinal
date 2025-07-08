@@ -205,20 +205,23 @@ class TelaMedico(ctk.CTkFrame):
             valor_triagem = self.gerenciador.get_triagem(paciente_id)
 
             if valor_triagem == Triagem.VERMELHA:
-                data_saida = data_entrada + timedelta(hours=3)
+                data_saida = (data_entrada + timedelta(hours=3)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
             elif valor_triagem == Triagem.LARANJA:
-                data_saida = data_entrada + timedelta(hours=1, minutes=30)
+                data_saida = (data_entrada + timedelta(hours=1, minutes=30)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
             elif valor_triagem == Triagem.AMARELA:
-                data_saida = data_entrada + timedelta(minutes=45)
+                data_saida = (data_entrada + timedelta(minutes=45)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
             elif valor_triagem == Triagem.VERDE:
-                data_saida = data_entrada + timedelta(minutes=25)
+                data_saida = (data_entrada + timedelta(minutes=25)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
             else:
-                data_saida = data_entrada + timedelta(minutes=12)
+                data_saida = (data_entrada + timedelta(minutes=12)) \
+                    .strftime("%Y-%m-%d %H:%M:%S")
 
             # Formata datas para string
             data_entrada = data_entrada.strftime("%Y-%m-%d %H:%M:%S")
-            data_saida = data_saida.strftime("%Y-%m-%d %H:%M:%S")
-
             # Registra a internação no banco
             self.gerenciador_leitos.inserir(
                 numero_leito=numero_disponivel,
@@ -285,11 +288,10 @@ class TelaMedico(ctk.CTkFrame):
 
     def salvar_dados(self):
         paciente_id = self.paciente.get("id")
-        print(f"Tentando mover paciente ID {paciente_id} para a fila de atendimento médico")
+        print(f"Tentando mover paciente ID {self.paciente['id']} para a fila de atendimento médico")
 
-        # Verifica se paciente existe no banco
-        if not self.gerenciador.paciente_existe(paciente_id):
-            print(f"Erro: paciente ID {paciente_id} não existe no banco!")
+        if not self.gerenciador.paciente_existe(self.paciente["id"]):
+            print(f"Erro: paciente ID {self.paciente['id']} não existe no banco!")
             return
 
         # Valida ID
