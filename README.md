@@ -50,25 +50,3 @@ Um sistema completo para gerenciamento de emergências hospitalares, com triagem
 
 ---
 
-## 🗂️ Estrutura do Projeto
-
-```
-📁 projetoFinal/
-├── model/
-│   ├── paciente.py
-│   ├── triagem.py
-├── gui/
-│   ├── telaPrincipal.py
-│   ├── telaFila.py
-├── banco/
-│   ├── banco_teste.py
-│   ├── chamada_visualizacao.py
-│   ├── chamada_visualizacao.py
-│   ├── chamada_visualizacao.py
-│   ├── chamada_visualizacao.py
-├── main.py
-└── README.md
-```
-README.md em revisao
----
-
